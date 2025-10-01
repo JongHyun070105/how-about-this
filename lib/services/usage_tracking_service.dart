@@ -6,13 +6,11 @@ class UsageTrackingService {
 
   static const String _lastResetDateKey = 'last_reset_date';
   static const String _reviewCountKey = 'review_count';
-  static const String _recommendationCountKey = 'recommendation_count';
   static const String _totalRecommendationCountKey =
       'total_recommendation_count';
 
   static const int _maxReviewsPerDay = 5;
-  static const int _maxRecommendationsPerDay = 20;
-  static const int _maxTotalRecommendationsPerDay = 20;
+  static const int _maxTotalRecommendationsPerDay = 40;
 
   /// 사용량 카운터를 초기화합니다 (자정 기준).
   Future<void> _resetCountsIfNewDay() async {
@@ -34,7 +32,6 @@ class UsageTrackingService {
 
     // 새 날이거나 첫 실행이면 모든 카운트 초기화
     await _storageService.setValue(_usageDataFile, _reviewCountKey, 0);
-    await _storageService.setValue(_usageDataFile, _recommendationCountKey, 0);
     await _storageService.setValue(
       _usageDataFile,
       _totalRecommendationCountKey,
@@ -63,17 +60,6 @@ class UsageTrackingService {
     return false;
   }
 
-  /// 추천 횟수를 증가시킵니다.
-  Future<void> incrementRecommendationCount() async {
-    await _resetCountsIfNewDay();
-    int currentCount = await getRecommendationCount();
-    await _storageService.setValue(
-      _usageDataFile,
-      _recommendationCountKey,
-      currentCount + 1,
-    );
-  }
-
   /// 총 추천 사용 횟수를 증가시키고 제한을 확인합니다.
   Future<bool> incrementTotalRecommendationCount() async {
     await _resetCountsIfNewDay();
@@ -100,16 +86,6 @@ class UsageTrackingService {
         0;
   }
 
-  /// 현재 추천 횟수를 가져옵니다.
-  Future<int> getRecommendationCount() async {
-    await _resetCountsIfNewDay();
-    return await _storageService.getValue<int>(
-          _usageDataFile,
-          _recommendationCountKey,
-        ) ??
-        0;
-  }
-
   /// 총 추천 사용 횟수를 가져옵니다.
   Future<int> getTotalRecommendationCount() async {
     await _resetCountsIfNewDay();
@@ -120,20 +96,13 @@ class UsageTrackingService {
         0;
   }
 
-  /// 일일 추천 제한에 도달했는지 확인합니다.
-  Future<bool> hasReachedDailyLimit() async {
-    await _resetCountsIfNewDay();
-    final currentCount = await getRecommendationCount();
-    return currentCount >= _maxRecommendationsPerDay;
-  }
-
   /// 남은 추천 사용 가능 횟수를 반환합니다.
   Future<int> getRemainingRecommendationCount() async {
     await _resetCountsIfNewDay();
-    final used = await getRecommendationCount();
-    return (_maxRecommendationsPerDay - used).clamp(
+    final used = await getTotalRecommendationCount();
+    return (_maxTotalRecommendationsPerDay - used).clamp(
       0,
-      _maxRecommendationsPerDay,
+      _maxTotalRecommendationsPerDay,
     );
   }
 

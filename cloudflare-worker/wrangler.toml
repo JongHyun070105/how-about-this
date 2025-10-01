@@ -1,0 +1,20 @@
+name = "reviewai-api-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Workers 플랜
+workers_dev = true
+
+# KV Namespace for rate limiting (배포 후 생성 필요)
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "00cc2b1530ca499fbaef968ef9c7ca95"
+
+# 환경 변수 (민감한 정보는 wrangler secret으로 설정)
+[env.production]
+# wrangler secret put GEMINI_API_KEY
+# wrangler secret put JWT_SECRET
+
+# 환경 변수 예시 (non-sensitive)
+[vars]
+MIN_APP_VERSION = "1.0.0"

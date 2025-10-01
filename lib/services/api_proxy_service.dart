@@ -8,7 +8,7 @@ import 'package:review_ai/services/user_preference_service.dart';
 import 'package:review_ai/services/auth_service.dart';
 import 'package:review_ai/config/api_config.dart';
 
-/// Railway API 프록시 서버를 통한 Gemini API 호출 서비스
+/// Cloudflare Workers API 프록시 서버를 통한 Gemini API 호출 서비스
 class ApiProxyService {
   final http.Client _client;
   final String _proxyUrl;

@@ -258,7 +258,7 @@ class _TodayRecommendationScreenState
 
           final usageTrackingService = ref.read(usageTrackingServiceProvider);
           final hasReachedLimit = await usageTrackingService
-              .hasReachedDailyLimit();
+              .hasReachedTotalRecommendationLimit();
 
           if (hasReachedLimit && context.mounted) {
             showAppDialog(
@@ -269,7 +269,7 @@ class _TodayRecommendationScreenState
             return;
           }
 
-          await usageTrackingService.incrementRecommendationCount();
+          await usageTrackingService.incrementTotalRecommendationCount();
 
           if (context.mounted) {
             ref
@@ -390,7 +390,8 @@ class _TodayRecommendationScreenState
 
     if (result == true) {
       final usageTrackingService = ref.read(usageTrackingServiceProvider);
-      final hasReachedLimit = await usageTrackingService.hasReachedDailyLimit();
+      final hasReachedLimit = await usageTrackingService
+          .hasReachedTotalRecommendationLimit();
 
       if (hasReachedLimit && context.mounted) {
         showAppDialog(
@@ -401,7 +402,7 @@ class _TodayRecommendationScreenState
         return;
       }
 
-      await usageTrackingService.incrementRecommendationCount();
+      await usageTrackingService.incrementTotalRecommendationCount();
 
       if (context.mounted) {
         openDialog();
@@ -427,7 +428,7 @@ class _TodayRecommendationScreenState
   }
 
   bool _shouldShowReviewPrompt(int count) {
-    return count == 1 || count == 10 || count == 20;
+    return count == 1 || count == 10 || count == 20 || count == 40;
   }
 
   FoodRecommendation _createDefaultFood() {

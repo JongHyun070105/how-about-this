@@ -1,0 +1,14 @@
+{
+  "name": "reviewai-cloudflare-worker",
+  "version": "1.0.0",
+  "description": "ReviewAI API Proxy on Cloudflare Workers",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
+

@@ -71,7 +71,7 @@ class SecurityConfig {
   }
 
   // API Key Management - 이제 서버에서 관리하므로 제거됨
-  // API 키는 Railway 서버에서만 관리됩니다.
+  // API 키는 Cloudflare Workers 서버에서만 관리됩니다.
 
   // Logging & Error Handling (as before)
   static bool get shouldLogDetailed => EnvironmentConfig.enableVerboseLogging;

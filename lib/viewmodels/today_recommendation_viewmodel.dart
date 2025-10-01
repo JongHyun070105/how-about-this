@@ -17,8 +17,7 @@ class TodayRecommendationViewModel extends StateNotifier<bool> {
     BuildContext context,
     FoodCategory category,
     Function(
-      BuildContext,
-      {
+      BuildContext, {
       required String category,
       required List<FoodRecommendation> foods,
       required Color color,
@@ -33,7 +32,7 @@ class TodayRecommendationViewModel extends StateNotifier<bool> {
       final usageTrackingService = _ref.read(usageTrackingServiceProvider);
       if (await usageTrackingService.hasReachedTotalRecommendationLimit()) {
         if (context.mounted) {
-          _showInfoDialog(context, '음식 추천은 하루 20회까지만 이용 가능합니다.');
+          _showInfoDialog(context, '음식 추천은 하루 40회까지만 이용 가능합니다.');
         }
         return;
       }
@@ -42,7 +41,6 @@ class TodayRecommendationViewModel extends StateNotifier<bool> {
       final foods = await _getFoodRecommendations(category);
 
       if (foods.isNotEmpty) {
-        await _incrementUsageCount();
         if (context.mounted) {
           showDialogFn(
             context,
@@ -76,11 +74,6 @@ class TodayRecommendationViewModel extends StateNotifier<bool> {
     return await RecommendationService.getFoodRecommendations(
       category: category.name,
     );
-  }
-
-  Future<void> _incrementUsageCount() async {
-    final usageTrackingService = _ref.read(usageTrackingServiceProvider);
-    await usageTrackingService.incrementTotalRecommendationCount();
   }
 
   void _showInfoDialog(BuildContext context, String message) {

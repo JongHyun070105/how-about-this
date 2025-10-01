@@ -40,7 +40,7 @@ class EnvironmentConfig {
 
   /// API URL은 이제 ApiConfig에서 관리됨
   static String get apiBaseUrl =>
-      'https://howaboutthis-production.up.railway.app';
+      'https://reviewai-api-proxy.how-about-this-api.workers.dev';
 
   // =============================================================================
   // 로깅 설정

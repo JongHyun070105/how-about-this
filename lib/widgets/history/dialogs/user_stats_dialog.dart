@@ -23,7 +23,7 @@ class _UserStatsDialogState extends ConsumerState<UserStatsDialog> {
   String? _errorMessage;
 
   // 상수들을 클래스 레벨에서 정의
-  static const int maxRecommendations = 20;
+  static const int maxRecommendations = 40;
   static const int maxReviews = 5;
   static const int maxPages = 2;
 
