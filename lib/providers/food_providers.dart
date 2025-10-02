@@ -119,16 +119,6 @@ final foodCategoriesProvider = Provider<List<FoodCategory>>((ref) {
       color: Color(0xFFD7CCC8), // Brown.shade100
     ),
     FoodCategory(
-      name: '다이어트',
-      imageUrl: 'assets/images/categories/diet.svg',
-      color: Color(0xFFA5D6A7), // Light Green.shade300
-    ),
-    FoodCategory(
-      name: '야식',
-      imageUrl: 'assets/images/categories/latenight.svg',
-      color: Color(0xFF9FA8DA), // Indigo.shade200
-    ),
-    FoodCategory(
       name: '상관없음',
       imageUrl: 'assets/images/categories/good.svg',
       color: Color(0xFFF5F5F5), // Grey.shade100

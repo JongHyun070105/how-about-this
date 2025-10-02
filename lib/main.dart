@@ -43,11 +43,15 @@ Future<void> main() async {
   );
 
   try {
-    await SecurityInitializer.initialize();
+    // 병렬 초기화로 성능 개선
+    await Future.wait([
+      SecurityInitializer.initialize(),
+      MobileAds.instance.initialize(),
+      AuthService.initialize(),
+      _configureSystemUI(),
+    ]);
+
     SecurityConfig.logAdConfiguration();
-    await MobileAds.instance.initialize();
-    await AuthService.initialize(); // JWT 인증 서비스 초기화
-    await _configureSystemUI();
 
     runApp(
       ClarityWidget(
@@ -113,18 +117,11 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   }
 
   Future<void> _initializeApp() async {
-    const minLoadingTime = Duration(milliseconds: 2000);
+    const minLoadingTime = Duration(milliseconds: 800); // 2초 → 0.8초로 대폭 단축
     final stopwatch = Stopwatch()..start();
 
     try {
-      final securityResult =
-          await SecurityInitializer.performRuntimeSecurityCheck();
-      if (!context.mounted) return;
-      if (!securityResult.isSecure) {
-        await SecurityInitializer.handleSecurityThreat(context, securityResult);
-        return; // Stop initialization if threat detected
-      }
-
+      // 네트워크 체크만 먼저 (빠르게)
       bool isConnected = await _checkInternetConnectivity();
       while (!isConnected) {
         if (!mounted) return;
@@ -132,15 +129,14 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
         if (shouldRetry) {
           isConnected = await _checkInternetConnectivity();
         } else {
-          // User chose to exit
           exit(0);
         }
       }
 
+      // 백그라운드 작업 시작 (UI 블로킹 안 함)
       _startBackgroundCaching();
-
-      // Check for updates after main initialization but before navigating away
-      await _checkForUpdate();
+      _performSecurityCheckInBackground();
+      _checkForUpdateInBackground();
 
       final elapsed = stopwatch.elapsed;
       if (elapsed < minLoadingTime) {
@@ -238,6 +234,34 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
       debugPrint('Error checking internet connectivity: $e');
       return false;
     }
+  }
+
+  void _performSecurityCheckInBackground() {
+    Future.microtask(() async {
+      try {
+        final securityResult =
+            await SecurityInitializer.performRuntimeSecurityCheck();
+        if (!mounted) return;
+        if (!securityResult.isSecure) {
+          await SecurityInitializer.handleSecurityThreat(
+            context,
+            securityResult,
+          );
+        }
+      } catch (e) {
+        debugPrint('Background security check error: $e');
+      }
+    });
+  }
+
+  void _checkForUpdateInBackground() {
+    Future.microtask(() async {
+      try {
+        await _checkForUpdate();
+      } catch (e) {
+        debugPrint('Background update check error: $e');
+      }
+    });
   }
 
   Future<void> _checkForUpdate() async {

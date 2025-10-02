@@ -29,8 +29,10 @@ class RecommendationService {
 
     final apiProxyService = ApiProxyService(http.Client(), ApiConfig.proxyUrl);
 
-    final prompt = apiProxyService.buildGenericRecommendationPrompt(
+    // 개인화 추천 사용 (타 카테고리 혼동 방지)
+    final prompt = await apiProxyService.buildPersonalizedRecommendationPrompt(
       category: category,
+      recentFoods: [], // 빈 배열로 최근 음식 제외 기능 비활성화
     );
 
     try {
