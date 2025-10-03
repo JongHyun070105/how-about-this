@@ -76,7 +76,7 @@ class KakaoApiService {
     try {
       // 🔥 핵심 변경: 카테고리 코드 사용
       final categoryCode = _getCategoryCode(category);
-      
+
       final params = RestaurantSearchParams(
         query: foodName, // "짜장면 맛집" 대신 그냥 "짜장면"
         latitude: latitude,
@@ -101,7 +101,7 @@ class KakaoApiService {
   /// - CS2: 편의점
   String? _getCategoryCode(String? category) {
     if (category == null) return 'FD6'; // 기본값: 음식점
-    
+
     switch (category) {
       case '카페':
         return 'CE7';
@@ -165,30 +165,30 @@ class KakaoApiService {
       // 🔥 카테고리 정확도 필터링 강화
       if (targetCategory != null) {
         final categoryLower = restaurant.categoryName.toLowerCase();
-        
+
         switch (targetCategory) {
           case '중식':
             // "중식" 또는 "중국음식"이 카테고리에 포함되어야 함
-            if (!categoryLower.contains('중식') && 
+            if (!categoryLower.contains('중식') &&
                 !categoryLower.contains('중국')) {
               return false;
             }
             break;
           case '한식':
-            if (!categoryLower.contains('한식') && 
+            if (!categoryLower.contains('한식') &&
                 !categoryLower.contains('한정식') &&
                 !categoryLower.contains('백반')) {
               return false;
             }
             break;
           case '일식':
-            if (!categoryLower.contains('일식') && 
+            if (!categoryLower.contains('일식') &&
                 !categoryLower.contains('일본')) {
               return false;
             }
             break;
           case '양식':
-            if (!categoryLower.contains('양식') && 
+            if (!categoryLower.contains('양식') &&
                 !categoryLower.contains('이탈리안') &&
                 !categoryLower.contains('스테이크') &&
                 !categoryLower.contains('파스타')) {
