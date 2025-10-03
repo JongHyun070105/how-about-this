@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:review_ai/models/food_recommendation.dart';
 import 'package:review_ai/services/user_preference_service.dart';
-
+import 'package:review_ai/screens/restaurant_search_screen.dart';
 
 class FoodRecommendationDialog extends ConsumerStatefulWidget {
   final String category;
@@ -95,8 +95,6 @@ class _FoodRecommendationDialogState
     _confettiController.dispose();
     super.dispose();
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +297,48 @@ class _FoodRecommendationDialogState
                               ),
                             ),
                           ],
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        // 근처 맛집 찾기 버튼
+                        Container(
+                          width: double.infinity,
+                          margin: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.02,
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => RestaurantSearchScreen(
+                                    foodName: widget.recommended.name,
+                                    category: widget.category,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.location_on,
+                              size: screenWidth * 0.04,
+                            ),
+                            label: const Text(
+                              '근처 맛집 찾기',
+                              style: TextStyle(fontFamily: 'Do Hyeon'),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade500,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.02,
+                                vertical: screenHeight * 0.015,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  screenWidth * 0.025,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                         SizedBox(height: screenHeight * 0.01),
                         TextButton(

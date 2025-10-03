@@ -28,6 +28,10 @@
 	<string>사진을 업로드하기 위해 접근이 필요합니다.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>리뷰에 사진을 찍어 첨부하기 위해 카메라 접근이 필요합니다.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>근처 맛집을 찾기 위해 위치 정보가 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>근처 맛집을 찾기 위해 위치 정보가 필요합니다.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-6555743055922387~4113470325</string>
 	<key>LSRequiresIPhoneOS</key>

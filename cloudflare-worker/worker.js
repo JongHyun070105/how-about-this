@@ -192,6 +192,11 @@ export default {
         return handleGeminiProxy(request, env);
       }
 
+      // 카카오 로컬 API 프록시
+      if (path === "/api/kakao-local" && request.method === "GET") {
+        return handleKakaoLocalProxy(request, env);
+      }
+
       return jsonResponse({ error: "Not Found" }, 404, CORS_HEADERS);
     } catch (error) {
       console.error("Worker error:", error);
@@ -416,6 +421,121 @@ async function handleGeminiProxy(request, env) {
   return jsonResponse(data, 200, CORS_HEADERS);
 }
 
+// 카카오 로컬 API 프록시 핸들러
+async function handleKakaoLocalProxy(request, env) {
+  // JWT 검증
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return jsonResponse(
+      {
+        error: "No valid token provided",
+        message: "Authorization header with Bearer token is required",
+      },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  const token = authHeader.substring(7);
+  let user;
+
+  try {
+    user = await verifyJWT(token, env.JWT_SECRET);
+  } catch (error) {
+    if (error.message === "Token expired") {
+      return jsonResponse(
+        { error: "Token expired", message: "Please refresh your token" },
+        401,
+        CORS_HEADERS
+      );
+    }
+    return jsonResponse(
+      { error: "Invalid token", message: "Token verification failed" },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  // 추가 보안 검증
+  if (!user.deviceId || !user.deviceHash) {
+    return jsonResponse(
+      {
+        error: "Invalid token payload",
+        message: "Token missing required information",
+      },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  // URL 파라미터 파싱
+  const url = new URL(request.url);
+  const query = url.searchParams.get("query");
+  const x = url.searchParams.get("x"); // 경도
+  const y = url.searchParams.get("y"); // 위도
+  const radius = url.searchParams.get("radius") || "1000";
+  const page = url.searchParams.get("page") || "1";
+  const size = url.searchParams.get("size") || "15";
+  const categoryGroupCode = url.searchParams.get("category_group_code"); // 카테고리 그룹 코드
+
+  // 필수 파라미터 검증
+  if (!query || !x || !y) {
+    return jsonResponse(
+      {
+        error: "Missing required parameters",
+        message: "query, x (longitude), and y (latitude) are required",
+      },
+      400,
+      CORS_HEADERS
+    );
+  }
+
+  // 카카오 API 키 가져오기
+  const apiKey = env.KAKAO_API_KEY;
+  if (!apiKey) {
+    console.error("KAKAO_API_KEY not found in environment variables");
+    return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
+  }
+
+  // 카카오 로컬 API 호출
+  const kakaoUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
+  const kakaoParams = new URLSearchParams({
+    query: query,
+    x: x,
+    y: y,
+    radius: radius,
+    page: page,
+    size: size,
+    sort: "distance",
+  });
+  
+  // 카테고리 그룹 코드가 있으면 추가
+  if (categoryGroupCode) {
+    kakaoParams.append("category_group_code", categoryGroupCode);
+  }
+
+  const response = await fetch(`${kakaoUrl}?${kakaoParams}`, {
+    method: "GET",
+    headers: {
+      Authorization: `KakaoAK ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Kakao API error:", response.status, errorText);
+    return jsonResponse(
+      { error: "Kakao API error", details: errorText },
+      response.status,
+      CORS_HEADERS
+    );
+  }
+
+  const data = await response.json();
+  return jsonResponse(data, 200, CORS_HEADERS);
+}
+
 // JSON 응답 헬퍼
 function jsonResponse(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -426,4 +546,3 @@ function jsonResponse(data, status = 200, headers = {}) {
     },
   });
 }
-

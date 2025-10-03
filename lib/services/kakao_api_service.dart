@@ -1,0 +1,261 @@
+import 'package:dio/dio.dart';
+import '../config/api_config.dart';
+import '../models/location_models.dart';
+import 'auth_service.dart';
+
+/// 카카오 로컬 API 서비스
+/// 맛집 검색을 위한 카카오 로컬 API를 호출합니다.
+class KakaoApiService {
+  static const Duration _timeout = Duration(seconds: 10);
+
+  late final Dio _dio;
+
+  KakaoApiService() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.proxyUrl,
+        connectTimeout: _timeout,
+        receiveTimeout: _timeout,
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
+  }
+
+  /// 키워드로 장소를 검색합니다.
+  Future<KakaoSearchResponse> searchPlaces(
+    RestaurantSearchParams params,
+  ) async {
+    try {
+      // JWT 토큰 가져오기
+      final token = await AuthService.getValidAccessToken();
+
+      final response = await _dio.get(
+        '/api/kakao-local',
+        queryParameters: params.toJson(),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200) {
+        return KakaoSearchResponse.fromJson(response.data);
+      } else {
+        throw KakaoApiException(
+          'API 호출 실패: ${response.statusCode}',
+          response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw KakaoApiException('네트워크 연결 시간이 초과되었습니다.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw KakaoApiException('네트워크 연결에 실패했습니다.');
+      } else if (e.response?.statusCode == 401) {
+        throw KakaoApiException('인증이 필요합니다. 앱을 다시 시작해주세요.');
+      } else if (e.response?.statusCode == 403) {
+        throw KakaoApiException('API 사용 권한이 없습니다.');
+      } else if (e.response?.statusCode == 429) {
+        throw KakaoApiException('API 호출 한도를 초과했습니다.');
+      } else {
+        throw KakaoApiException('API 호출 중 오류가 발생했습니다: ${e.message}');
+      }
+    } catch (e) {
+      throw KakaoApiException('예상치 못한 오류가 발생했습니다: ${e.toString()}');
+    }
+  }
+
+  /// 음식 이름으로 맛집을 검색합니다.
+  Future<List<KakaoPlace>> searchRestaurants({
+    required String foodName,
+    required double latitude,
+    required double longitude,
+    String? category,
+    int radius = 1000,
+    int page = 1,
+    int size = 15,
+  }) async {
+    try {
+      // 🔥 핵심 변경: 카테고리 코드 사용
+      final categoryCode = _getCategoryCode(category);
+      
+      final params = RestaurantSearchParams(
+        query: foodName, // "짜장면 맛집" 대신 그냥 "짜장면"
+        latitude: latitude,
+        longitude: longitude,
+        radius: radius,
+        page: page,
+        size: size,
+        categoryGroupCode: categoryCode, // 카테고리 필터 추가
+      );
+
+      final response = await searchPlaces(params);
+      return response.documents;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// 카테고리에 맞는 카카오 카테고리 코드를 반환합니다.
+  /// 카카오 로컬 API 카테고리 그룹 코드:
+  /// - FD6: 음식점
+  /// - CE7: 카페
+  /// - CS2: 편의점
+  String? _getCategoryCode(String? category) {
+    if (category == null) return 'FD6'; // 기본값: 음식점
+    
+    switch (category) {
+      case '카페':
+        return 'CE7';
+      case '편의점':
+        return 'CS2';
+      case '한식':
+      case '중식':
+      case '일식':
+      case '양식':
+      case '분식':
+      case '아시안':
+      case '패스트푸드':
+        return 'FD6'; // 모두 음식점
+      default:
+        return 'FD6';
+    }
+  }
+
+  /// 카테고리별 검색어를 생성합니다.
+  String getCategorySearchQuery(String category, String foodName) {
+    switch (category) {
+      case '한식':
+        return foodName; // "짜장면" 그대로
+      case '중식':
+        return foodName;
+      case '일식':
+        return foodName;
+      case '양식':
+        return foodName;
+      case '분식':
+        return foodName;
+      case '아시안':
+        return foodName;
+      case '패스트푸드':
+        return foodName;
+      case '편의점':
+        return '편의점';
+      case '카페':
+        return foodName;
+      default:
+        return foodName;
+    }
+  }
+
+  /// 검색 결과를 필터링합니다. (카테고리 필터링 강화)
+  List<KakaoPlace> filterRestaurants(
+    List<KakaoPlace> restaurants, {
+    String? targetCategory, // 원하는 카테고리
+    double? minRating,
+    int? maxDistance,
+    List<String>? excludeCategories,
+  }) {
+    return restaurants.where((restaurant) {
+      // 거리 필터링
+      if (maxDistance != null && restaurant.distanceInMeters != null) {
+        if (restaurant.distanceInMeters! > maxDistance) {
+          return false;
+        }
+      }
+
+      // 🔥 카테고리 정확도 필터링 강화
+      if (targetCategory != null) {
+        final categoryLower = restaurant.categoryName.toLowerCase();
+        
+        switch (targetCategory) {
+          case '중식':
+            // "중식" 또는 "중국음식"이 카테고리에 포함되어야 함
+            if (!categoryLower.contains('중식') && 
+                !categoryLower.contains('중국')) {
+              return false;
+            }
+            break;
+          case '한식':
+            if (!categoryLower.contains('한식') && 
+                !categoryLower.contains('한정식') &&
+                !categoryLower.contains('백반')) {
+              return false;
+            }
+            break;
+          case '일식':
+            if (!categoryLower.contains('일식') && 
+                !categoryLower.contains('일본')) {
+              return false;
+            }
+            break;
+          case '양식':
+            if (!categoryLower.contains('양식') && 
+                !categoryLower.contains('이탈리안') &&
+                !categoryLower.contains('스테이크') &&
+                !categoryLower.contains('파스타')) {
+              return false;
+            }
+            break;
+          case '분식':
+            if (!categoryLower.contains('분식')) {
+              return false;
+            }
+            break;
+        }
+      }
+
+      // 카테고리 제외 필터링
+      if (excludeCategories != null && excludeCategories.isNotEmpty) {
+        for (final category in excludeCategories) {
+          if (restaurant.categoryName.contains(category)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  /// 검색 결과를 정렬합니다.
+  List<KakaoPlace> sortRestaurants(
+    List<KakaoPlace> restaurants, {
+    RestaurantSortType sortType = RestaurantSortType.distance,
+  }) {
+    switch (sortType) {
+      case RestaurantSortType.distance:
+        return restaurants..sort((a, b) {
+          final distanceA = a.distanceInMeters ?? double.infinity;
+          final distanceB = b.distanceInMeters ?? double.infinity;
+          return distanceA.compareTo(distanceB);
+        });
+      case RestaurantSortType.name:
+        return restaurants..sort((a, b) => a.placeName.compareTo(b.placeName));
+      case RestaurantSortType.category:
+        return restaurants
+          ..sort((a, b) => a.categoryName.compareTo(b.categoryName));
+    }
+  }
+}
+
+/// 카카오 API 예외 클래스
+class KakaoApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  const KakaoApiException(this.message, [this.statusCode]);
+
+  @override
+  String toString() {
+    if (statusCode != null) {
+      return 'KakaoApiException: $message (Status: $statusCode)';
+    }
+    return 'KakaoApiException: $message';
+  }
+}
+
+/// 맛집 정렬 타입
+enum RestaurantSortType {
+  distance, // 거리순
+  name, // 이름순
+  category, // 카테고리순
+}
