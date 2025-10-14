@@ -150,6 +150,7 @@ class KakaoApiService {
   List<KakaoPlace> filterRestaurants(
     List<KakaoPlace> restaurants, {
     String? targetCategory, // 원하는 카테고리
+    String? foodName, // 🔥 음식명 추가: 정확한 매칭을 위해
     double? minRating,
     int? maxDistance,
     List<String>? excludeCategories,
@@ -159,6 +160,23 @@ class KakaoApiService {
       if (maxDistance != null && restaurant.distanceInMeters != null) {
         if (restaurant.distanceInMeters! > maxDistance) {
           return false;
+        }
+      }
+
+      // 🔥 음식명 필터링: 음식점 이름이나 카테고리에 음식명이 포함되어야 함
+      if (foodName != null && foodName.isNotEmpty) {
+        final nameLower = restaurant.placeName.toLowerCase();
+        final categoryLower = restaurant.categoryName.toLowerCase();
+        final foodLower = foodName.toLowerCase();
+        
+        // 음식점 이름이나 카테고리에 음식명이 포함되어 있으면 관련성이 높음
+        final hasRelevance = nameLower.contains(foodLower) || 
+                            categoryLower.contains(foodLower);
+        
+        // 관련성이 전혀 없으면 제외
+        if (!hasRelevance && targetCategory != null) {
+          // 단, 카테고리만 맞는 경우는 허용 (예: "한식" 카테고리에서 한식당 찾기)
+          // 이 경우 아래 카테고리 필터링을 통과하면 OK
         }
       }
 
@@ -175,15 +193,25 @@ class KakaoApiService {
             }
             break;
           case '한식':
+            // 한식 관련 키워드 확장
             if (!categoryLower.contains('한식') &&
                 !categoryLower.contains('한정식') &&
-                !categoryLower.contains('백반')) {
+                !categoryLower.contains('백반') &&
+                !categoryLower.contains('고기') &&
+                !categoryLower.contains('삼겹살') &&
+                !categoryLower.contains('갈비') &&
+                !categoryLower.contains('찌개') &&
+                !categoryLower.contains('국밥')) {
               return false;
             }
             break;
           case '일식':
             if (!categoryLower.contains('일식') &&
-                !categoryLower.contains('일본')) {
+                !categoryLower.contains('일본') &&
+                !categoryLower.contains('스시') &&
+                !categoryLower.contains('초밥') &&
+                !categoryLower.contains('라멘') &&
+                !categoryLower.contains('우동')) {
               return false;
             }
             break;
@@ -191,12 +219,22 @@ class KakaoApiService {
             if (!categoryLower.contains('양식') &&
                 !categoryLower.contains('이탈리안') &&
                 !categoryLower.contains('스테이크') &&
-                !categoryLower.contains('파스타')) {
+                !categoryLower.contains('파스타') &&
+                !categoryLower.contains('피자')) {
               return false;
             }
             break;
           case '분식':
             if (!categoryLower.contains('분식')) {
+              return false;
+            }
+            break;
+          case '아시안':
+            if (!categoryLower.contains('아시아') &&
+                !categoryLower.contains('베트남') &&
+                !categoryLower.contains('태국') &&
+                !categoryLower.contains('인도') &&
+                !categoryLower.contains('동남아')) {
               return false;
             }
             break;

@@ -51,9 +51,18 @@ class RecommendationService {
 
       final List<dynamic> decodedList = jsonDecode(cleanedJson);
 
-      final recommendations = decodedList
-          .map((item) => FoodRecommendation.fromJson(item))
-          .toList();
+      // 🔥 번호 제거 로직: "1. 짜장면" -> "짜장면"
+      final recommendations = decodedList.map((item) {
+        if (item is Map<String, dynamic> && item['name'] != null) {
+          // 정규식으로 "1. ", "2. ", ... 형식의 번호 제거
+          final cleanedName = (item['name'] as String).replaceFirst(
+            RegExp(r'^\d+\.\s*'),
+            '',
+          );
+          item['name'] = cleanedName;
+        }
+        return FoodRecommendation.fromJson(item);
+      }).toList();
 
       await _saveToCache(cacheKey, recommendations);
 

@@ -75,6 +75,7 @@ class RestaurantSearchNotifier extends StateNotifier<RestaurantSearchState> {
       final filteredRestaurants = _kakaoApiService.filterRestaurants(
         restaurants,
         targetCategory: category, // 원하는 카테고리 지정
+        foodName: foodName, // 🔥 음식명 추가: 정확한 매칭을 위해
         maxDistance: radius,
         excludeCategories: _getExcludeCategories(category),
       );

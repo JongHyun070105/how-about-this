@@ -177,7 +177,7 @@ class AuthService {
     return 'device_${random}_${DateTime.now().microsecondsSinceEpoch}';
   }
 
-  /// 앱 버전 가져오기 ㅇ
+  /// 앱 버전 가져오기
   static Future<String> _getAppVersion() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
