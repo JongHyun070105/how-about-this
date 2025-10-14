@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:review_ai/providers/review_provider.dart';
+import 'package:review_ai/config/ui_constants.dart';
 
 final isPickingImageProvider = StateProvider<bool>((ref) => false);
 
@@ -166,9 +167,9 @@ class ImageUploadSection extends ConsumerWidget {
       // 향상된 이미지 선택 옵션
       final picked = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 90,
+        maxWidth: UiConstants.maxImageDimension,
+        maxHeight: UiConstants.maxImageDimension,
+        imageQuality: UiConstants.imageQuality,
       );
 
       // 🔒 권한 거부 처리: picked가 null이면 사용자가 취소했거나 권한이 없음
@@ -185,10 +186,11 @@ class ImageUploadSection extends ConsumerWidget {
         throw Exception('선택된 이미지 파일을 찾을 수 없습니다');
       }
 
-      // 파일 크기 체크 (10MB 제한)
+      // 파일 크기 체크
       final fileSize = await imageFile.length();
-      if (fileSize > 10 * 1024 * 1024) {
-        throw Exception('이미지 파일이 너무 큽니다.\n10MB 이하의 이미지를 선택해주세요.');
+      final maxSizeBytes = UiConstants.maxImageSizeMB * 1024 * 1024;
+      if (fileSize > maxSizeBytes) {
+        throw Exception('이미지 파일이 너무 큽니다.\n${UiConstants.maxImageSizeMB}MB 이하의 이미지를 선택해주세요.');
       }
 
       if (fileSize == 0) {
@@ -200,7 +202,7 @@ class ImageUploadSection extends ConsumerWidget {
       );
 
       // 약간의 지연을 추가하여 사용자 경험 개선
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(UiConstants.mediumAnimation);
 
       ref.read(reviewProvider.notifier).setImage(imageFile);
     } catch (e) {

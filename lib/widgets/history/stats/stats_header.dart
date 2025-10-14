@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../utils/responsive_helper.dart';
 
 /// 통계 다이얼로그 헤더 위젯
 class StatsHeader extends StatelessWidget {
@@ -15,16 +16,17 @@ class StatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 768;
-    final headerFontSize = (screenWidth * (isTablet ? 0.028 : 0.045)).clamp(
-      14.0,
-      24.0,
+    final responsive = context.responsive;
+    final headerFontSize = responsive.fontSize(
+      mobileRatio: 0.045,
+      tabletRatio: 0.028,
+      min: 14.0,
+      max: 24.0,
     );
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
+        horizontal: responsive.widthRatio(0.04),
         vertical: 12,
       ),
       decoration: BoxDecoration(
@@ -52,16 +54,8 @@ class StatsHeader extends StatelessWidget {
             children: [
               ...List.generate(
                 maxPages,
-                (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: currentPage == index
-                        ? Theme.of(context).primaryColor
-                        : Colors.grey[300],
-                  ),
+                (index) => _PageIndicatorDot(
+                  isActive: currentPage == index,
                 ),
               ),
               IconButton(
@@ -74,6 +68,26 @@ class StatsHeader extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 페이지 인디케이터 점
+class _PageIndicatorDot extends StatelessWidget {
+  final bool isActive;
+
+  const _PageIndicatorDot({required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isActive ? Theme.of(context).primaryColor : Colors.grey[300],
       ),
     );
   }
