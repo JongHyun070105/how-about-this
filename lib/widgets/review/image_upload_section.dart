@@ -190,7 +190,9 @@ class ImageUploadSection extends ConsumerWidget {
       final fileSize = await imageFile.length();
       final maxSizeBytes = UiConstants.maxImageSizeMB * 1024 * 1024;
       if (fileSize > maxSizeBytes) {
-        throw Exception('이미지 파일이 너무 큽니다.\n${UiConstants.maxImageSizeMB}MB 이하의 이미지를 선택해주세요.');
+        throw Exception(
+          '이미지 파일이 너무 큽니다.\n${UiConstants.maxImageSizeMB}MB 이하의 이미지를 선택해주세요.',
+        );
       }
 
       if (fileSize == 0) {

@@ -54,9 +54,7 @@ class StatsHeader extends StatelessWidget {
             children: [
               ...List.generate(
                 maxPages,
-                (index) => _PageIndicatorDot(
-                  isActive: currentPage == index,
-                ),
+                (index) => _PageIndicatorDot(isActive: currentPage == index),
               ),
               IconButton(
                 onPressed: onClose,

@@ -28,5 +28,5 @@ class ParsingException extends ApiException {
 
 /// 이미지 유효성 검사 실패 시 발생하는 예외
 class ImageValidationException extends ApiException {
-  ImageValidationException(String message) : super(message);
+  ImageValidationException(super.message);
 }
