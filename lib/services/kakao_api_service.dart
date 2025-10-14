@@ -168,11 +168,11 @@ class KakaoApiService {
         final nameLower = restaurant.placeName.toLowerCase();
         final categoryLower = restaurant.categoryName.toLowerCase();
         final foodLower = foodName.toLowerCase();
-        
+
         // 음식점 이름이나 카테고리에 음식명이 포함되어 있으면 관련성이 높음
-        final hasRelevance = nameLower.contains(foodLower) || 
-                            categoryLower.contains(foodLower);
-        
+        final hasRelevance =
+            nameLower.contains(foodLower) || categoryLower.contains(foodLower);
+
         // 관련성이 전혀 없으면 제외
         if (!hasRelevance && targetCategory != null) {
           // 단, 카테고리만 맞는 경우는 허용 (예: "한식" 카테고리에서 한식당 찾기)

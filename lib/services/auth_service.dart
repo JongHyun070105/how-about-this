@@ -56,36 +56,53 @@ class AuthService {
 
   /// 새 액세스 토큰 요청
   static Future<String> _requestNewToken() async {
-    final deviceId = await _getOrCreateDeviceId();
-    final appVersion = await _getAppVersion();
-    final deviceInfo = await _getDeviceInfo();
+    try {
+      final deviceId = await _getOrCreateDeviceId();
+      final appVersion = await _getAppVersion();
+      final deviceInfo = await _getDeviceInfo();
 
-    final response = await http.post(
-      Uri.parse('${ApiConfig.proxyUrl}/api/auth/token'),
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ReviewAI-Flutter/${appVersion}',
-      },
-      body: jsonEncode({
-        'deviceId': deviceId,
-        'appVersion': appVersion,
-        'deviceInfo': deviceInfo,
-      }),
-    );
+      final requestUrl = '${ApiConfig.proxyUrl}/api/auth/token';
+      debugPrint('Requesting token from: $requestUrl');
+      debugPrint('DeviceId: $deviceId, AppVersion: $appVersion');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final accessToken = data['accessToken'] as String;
-      final refreshToken = data['refreshToken'] as String;
-      final expiresIn = data['expiresIn'] as int;
+      final response = await http.post(
+        Uri.parse(requestUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'ReviewAI-Flutter/$appVersion',
+        },
+        body: jsonEncode({
+          'deviceId': deviceId,
+          'appVersion': appVersion,
+          'deviceInfo': deviceInfo,
+        }),
+      ).timeout(const Duration(seconds: 10));
 
-      // 토큰 캐싱
-      await _cacheTokens(accessToken, refreshToken, expiresIn);
-      
-      return accessToken;
-    } else {
-      final errorData = jsonDecode(response.body);
-      throw AuthException('토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'}');
+      debugPrint('Token response status: ${response.statusCode}');
+      debugPrint('Token response body (first 200 chars): ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final accessToken = data['accessToken'] as String;
+        final refreshToken = data['refreshToken'] as String;
+        final expiresIn = data['expiresIn'] as int;
+
+        // 토큰 캐싱
+        await _cacheTokens(accessToken, refreshToken, expiresIn);
+        
+        return accessToken;
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw AuthException('토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'} (Status: ${response.statusCode})');
+        } catch (e) {
+          // JSON 파싱 실패 시 (HTML 응답 등)
+          throw AuthException('토큰 발급 실패: 서버 응답 오류 (Status: ${response.statusCode}). Response: ${response.body.substring(0, 100)}');
+        }
+      }
+    } catch (e) {
+      debugPrint('AuthService _requestNewToken error: $e');
+      rethrow;
     }
   }
 
