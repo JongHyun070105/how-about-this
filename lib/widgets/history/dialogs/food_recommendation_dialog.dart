@@ -299,43 +299,37 @@ class _FoodRecommendationDialogState
                           ],
                         ),
                         SizedBox(height: screenHeight * 0.01),
-                        // 근처 맛집 찾기 버튼
-                        Container(
-                          width: double.infinity,
-                          margin: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.02,
-                          ),
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => RestaurantSearchScreen(
-                                    foodName: widget.recommended.name,
-                                    category: widget.category,
-                                  ),
+                        // 근처 음식점 찾기 버튼 (좋아요/다른걸로 버튼과 동일한 너비)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => RestaurantSearchScreen(
+                                  foodName: widget.recommended.name,
+                                  category: widget.category,
                                 ),
-                              );
-                            },
-                            icon: Icon(
-                              Icons.location_on,
-                              size: screenWidth * 0.04,
-                            ),
-                            label: const Text(
-                              '근처 맛집 찾기',
-                              style: TextStyle(fontFamily: 'Do Hyeon'),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade500,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.02,
-                                vertical: screenHeight * 0.015,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  screenWidth * 0.025,
-                                ),
+                            );
+                          },
+                          icon: Icon(
+                            Icons.location_on,
+                            size: screenWidth * 0.04,
+                          ),
+                          label: const Text(
+                            '근처 음식점 찾기',
+                            style: TextStyle(fontFamily: 'Do Hyeon'),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade500,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.02,
+                              vertical: screenHeight * 0.015,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                screenWidth * 0.025,
                               ),
                             ),
                           ),

@@ -36,6 +36,10 @@ class KakaoApiService {
       );
 
       if (response.statusCode == 200) {
+        // 🔒 null 체크: response.data가 null일 수 있음
+        if (response.data == null) {
+          throw KakaoApiException('API 응답 데이터가 없습니다.');
+        }
         return KakaoSearchResponse.fromJson(response.data);
       } else {
         throw KakaoApiException(

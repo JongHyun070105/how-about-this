@@ -171,33 +171,38 @@ class ImageUploadSection extends ConsumerWidget {
         imageQuality: 90,
       );
 
-      if (picked != null) {
-        final imageFile = File(picked.path);
-
-        // 파일 존재 확인
-        if (!await imageFile.exists()) {
-          throw Exception('선택된 이미지 파일을 찾을 수 없습니다');
-        }
-
-        // 파일 크기 체크 (10MB 제한)
-        final fileSize = await imageFile.length();
-        if (fileSize > 10 * 1024 * 1024) {
-          throw Exception('이미지 파일이 너무 큽니다.\n10MB 이하의 이미지를 선택해주세요.');
-        }
-
-        if (fileSize == 0) {
-          throw Exception('선택된 이미지 파일이 손상되었습니다.');
-        }
-
-        debugPrint(
-          '선택된 이미지: ${imageFile.path}, 크기: ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB',
-        );
-
-        // 약간의 지연을 추가하여 사용자 경험 개선
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        ref.read(reviewProvider.notifier).setImage(imageFile);
+      // 🔒 권한 거부 처리: picked가 null이면 사용자가 취소했거나 권한이 없음
+      if (picked == null) {
+        // 사용자가 직접 취소한 경우는 조용히 리턴
+        ref.read(isPickingImageProvider.notifier).state = false;
+        return;
       }
+
+      final imageFile = File(picked.path);
+
+      // 파일 존재 확인
+      if (!await imageFile.exists()) {
+        throw Exception('선택된 이미지 파일을 찾을 수 없습니다');
+      }
+
+      // 파일 크기 체크 (10MB 제한)
+      final fileSize = await imageFile.length();
+      if (fileSize > 10 * 1024 * 1024) {
+        throw Exception('이미지 파일이 너무 큽니다.\n10MB 이하의 이미지를 선택해주세요.');
+      }
+
+      if (fileSize == 0) {
+        throw Exception('선택된 이미지 파일이 손상되었습니다.');
+      }
+
+      debugPrint(
+        '선택된 이미지: ${imageFile.path}, 크기: ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB',
+      );
+
+      // 약간의 지연을 추가하여 사용자 경험 개선
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      ref.read(reviewProvider.notifier).setImage(imageFile);
     } catch (e) {
       if (!context.mounted) return;
 

@@ -51,6 +51,9 @@ class RecommendationService {
 
       final List<dynamic> decodedList = jsonDecode(cleanedJson);
 
+      // 🔥 개수 확인 로그
+      debugPrint('📊 AI가 생성한 음식 개수: ${decodedList.length}개');
+
       // 🔥 번호 제거 로직: "1. 짜장면" -> "짜장면"
       final recommendations = decodedList.map((item) {
         if (item is Map<String, dynamic> && item['name'] != null) {
@@ -63,6 +66,8 @@ class RecommendationService {
         }
         return FoodRecommendation.fromJson(item);
       }).toList();
+
+      debugPrint('✅ 파싱 완료: ${recommendations.length}개 음식 추천');
 
       await _saveToCache(cacheKey, recommendations);
 

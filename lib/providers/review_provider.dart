@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
@@ -147,11 +146,13 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
 
   Future<void> loadHistory() async {
     try {
+      debugPrint('📂 리뷰 히스토리 로드 시작');
       final historyJson = await _storageService.getValue<List<dynamic>>(
         _historyFile,
         'history',
       );
       if (historyJson == null) {
+        debugPrint('📂 리뷰 히스토리 없음 (처음 실행 또는 삭제됨)');
         state = [];
         return;
       }
@@ -161,9 +162,10 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
             (data) => ReviewHistoryEntry.fromJson(data as Map<String, dynamic>),
           )
           .toList();
+      debugPrint('📂 리뷰 히스토리 로드 완료: ${entries.length}개');
       state = entries;
     } catch (e) {
-      debugPrint('Error loading review history: $e');
+      debugPrint('❌ 리뷰 히스토리 로드 오류: $e');
       await clearHistory();
     }
   }
@@ -190,12 +192,15 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
             .map((entry) => entry.toJson())
             .toList();
         await _storageService.setValue(_historyFile, 'history', historyJson);
+        debugPrint(
+          '💾 리뷰 저장 완료: ${newEntry.foodName} (총 ${currentHistory.length}개)',
+        );
         state = currentHistory;
       } else {
-        debugPrint('Duplicate review entry detected, not adding to history.');
+        debugPrint('⚠️ 중복 리뷰 감지, 저장하지 않음');
       }
     } catch (e) {
-      debugPrint('Error adding review to history: $e');
+      debugPrint('❌ 리뷰 저장 오류: $e');
     }
   }
 

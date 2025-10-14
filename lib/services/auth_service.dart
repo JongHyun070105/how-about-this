@@ -13,7 +13,7 @@ class AuthService {
   static const String _refreshTokenKey = 'refresh_token';
   static const String _tokenExpiryKey = 'token_expiry';
   static const String _deviceIdKey = 'device_id';
-  
+
   static String? _cachedAccessToken;
   static String? _cachedRefreshToken;
   static DateTime? _tokenExpiry;
@@ -23,8 +23,8 @@ class AuthService {
   static Future<String> getValidAccessToken() async {
     try {
       // 캐시된 토큰이 있고 유효하면 반환
-      if (_cachedAccessToken != null && 
-          _tokenExpiry != null && 
+      if (_cachedAccessToken != null &&
+          _tokenExpiry != null &&
           DateTime.now().isBefore(_tokenExpiry!)) {
         debugPrint('Using cached access token');
         return _cachedAccessToken!;
@@ -47,7 +47,6 @@ class AuthService {
       // 새 토큰 발급
       debugPrint('Requesting new access token');
       return await _requestNewToken();
-
     } catch (e) {
       debugPrint('AuthService error: $e');
       throw AuthException('인증 토큰을 가져올 수 없습니다: ${e.toString()}');
@@ -65,39 +64,52 @@ class AuthService {
       debugPrint('Requesting token from: $requestUrl');
       debugPrint('DeviceId: $deviceId, AppVersion: $appVersion');
 
-      final response = await http.post(
-        Uri.parse(requestUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'ReviewAI-Flutter/$appVersion',
-        },
-        body: jsonEncode({
-          'deviceId': deviceId,
-          'appVersion': appVersion,
-          'deviceInfo': deviceInfo,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            Uri.parse(requestUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'ReviewAI-Flutter/$appVersion',
+            },
+            body: jsonEncode({
+              'deviceId': deviceId,
+              'appVersion': appVersion,
+              'deviceInfo': deviceInfo,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       debugPrint('Token response status: ${response.statusCode}');
-      debugPrint('Token response body (first 200 chars): ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+      // 🔒 보안: 토큰 내용은 로그에 출력하지 않음 (프로덕션)
+      if (kDebugMode) {
+        debugPrint('Token response received (length: ${response.body.length})');
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        // 🔒 null 체크: 필수 필드 검증
+        if (data['accessToken'] == null || data['refreshToken'] == null || data['expiresIn'] == null) {
+          throw AuthException('토큰 응답에 필수 필드가 누락되었습니다.');
+        }
         final accessToken = data['accessToken'] as String;
         final refreshToken = data['refreshToken'] as String;
         final expiresIn = data['expiresIn'] as int;
 
         // 토큰 캐싱
         await _cacheTokens(accessToken, refreshToken, expiresIn);
-        
+
         return accessToken;
       } else {
         try {
           final errorData = jsonDecode(response.body);
-          throw AuthException('토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'} (Status: ${response.statusCode})');
+          throw AuthException(
+            '토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'} (Status: ${response.statusCode})',
+          );
         } catch (e) {
           // JSON 파싱 실패 시 (HTML 응답 등)
-          throw AuthException('토큰 발급 실패: 서버 응답 오류 (Status: ${response.statusCode}). Response: ${response.body.substring(0, 100)}');
+          throw AuthException(
+            '토큰 발급 실패: 서버 응답 오류 (Status: ${response.statusCode}). Response: ${response.body.substring(0, 100)}',
+          );
         }
       }
     } catch (e) {
@@ -110,22 +122,22 @@ class AuthService {
   static Future<String?> _refreshAccessToken(String refreshToken) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.proxyUrl}/api/auth/refresh'),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'refreshToken': refreshToken,
-      }),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refreshToken': refreshToken}),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      // 🔒 null 체크: 필수 필드 검증
+      if (data['accessToken'] == null || data['expiresIn'] == null) {
+        throw AuthException('토큰 갱신 응답에 필수 필드가 누락되었습니다.');
+      }
       final accessToken = data['accessToken'] as String;
       final expiresIn = data['expiresIn'] as int;
 
       // 새 액세스 토큰만 캐싱 (리프레시 토큰은 그대로 유지)
       await _cacheAccessToken(accessToken, expiresIn);
-      
+
       return accessToken;
     } else {
       // 리프레시 실패시 캐시 클리어
@@ -135,27 +147,34 @@ class AuthService {
   }
 
   /// 토큰 캐싱
-  static Future<void> _cacheTokens(String accessToken, String refreshToken, int expiresIn) async {
+  static Future<void> _cacheTokens(
+    String accessToken,
+    String refreshToken,
+    int expiresIn,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final expiry = DateTime.now().add(Duration(seconds: expiresIn));
-    
+
     await prefs.setString(_tokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
     await prefs.setString(_tokenExpiryKey, expiry.toIso8601String());
-    
+
     _cachedAccessToken = accessToken;
     _cachedRefreshToken = refreshToken;
     _tokenExpiry = expiry;
   }
 
   /// 액세스 토큰만 캐싱
-  static Future<void> _cacheAccessToken(String accessToken, int expiresIn) async {
+  static Future<void> _cacheAccessToken(
+    String accessToken,
+    int expiresIn,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final expiry = DateTime.now().add(Duration(seconds: expiresIn));
-    
+
     await prefs.setString(_tokenKey, accessToken);
     await prefs.setString(_tokenExpiryKey, expiry.toIso8601String());
-    
+
     _cachedAccessToken = accessToken;
     _tokenExpiry = expiry;
   }
@@ -166,7 +185,7 @@ class AuthService {
     await prefs.remove(_tokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_tokenExpiryKey);
-    
+
     _cachedAccessToken = null;
     _cachedRefreshToken = null;
     _tokenExpiry = null;
@@ -178,12 +197,12 @@ class AuthService {
 
     final prefs = await SharedPreferences.getInstance();
     _deviceId = prefs.getString(_deviceIdKey);
-    
+
     if (_deviceId == null) {
       _deviceId = _generateDeviceId();
       await prefs.setString(_deviceIdKey, _deviceId!);
     }
-    
+
     return _deviceId!;
   }
 
@@ -209,7 +228,7 @@ class AuthService {
   static Future<String> _getDeviceInfo() async {
     try {
       final deviceInfo = DeviceInfoPlugin();
-      
+
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         return 'Android-${androidInfo.version.release}-${androidInfo.model}';
@@ -217,7 +236,7 @@ class AuthService {
         final iosInfo = await deviceInfo.iosInfo;
         return 'iOS-${iosInfo.systemVersion}-${iosInfo.model}';
       }
-      
+
       return 'Unknown-Platform';
     } catch (e) {
       debugPrint('Failed to get device info: $e');
@@ -229,17 +248,17 @@ class AuthService {
   static Future<void> initialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       _cachedAccessToken = prefs.getString(_tokenKey);
       _cachedRefreshToken = prefs.getString(_refreshTokenKey);
-      
+
       final expiryString = prefs.getString(_tokenExpiryKey);
       if (expiryString != null) {
         _tokenExpiry = DateTime.parse(expiryString);
       }
-      
+
       _deviceId = prefs.getString(_deviceIdKey);
-      
+
       debugPrint('AuthService initialized');
     } catch (e) {
       debugPrint('AuthService initialization failed: $e');
@@ -257,7 +276,7 @@ class AuthService {
 class AuthException implements Exception {
   final String message;
   AuthException(this.message);
-  
+
   @override
   String toString() => 'AuthException: $message';
 }

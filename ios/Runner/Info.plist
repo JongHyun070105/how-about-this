@@ -260,5 +260,15 @@
 	<false/>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>baemin</string>
+		<string>yogiyo</string>
+		<string>yogiyoapp</string>
+		<string>yogiyo-app</string>
+		<string>coupangeats</string>
+		<string>coupang-eats</string>
+		<string>kakaomap</string>
+	</array>
 </dict>
 </plist>
