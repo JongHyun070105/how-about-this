@@ -52,6 +52,7 @@ Future<void> main() async {
       AuthService.initialize(),
       _configureSystemUI(),
       _requestLocationPermission(),
+      _requestAccessibilityPermission(),
     ]);
 
     SecurityConfig.logAdConfiguration();
@@ -111,6 +112,31 @@ Future<void> _requestLocationPermission() async {
     debugPrint('위치 권한이 허용되었습니다.');
   } catch (e) {
     debugPrint('위치 권한 요청 실패: $e');
+  }
+}
+
+/// 접근성 서비스 권한 요청
+Future<void> _requestAccessibilityPermission() async {
+  try {
+    if (Platform.isAndroid) {
+      const platform = MethodChannel('com.reviewai.keyevents');
+
+      // 접근성 서비스가 활성화되어 있는지 확인
+      final isEnabled = await platform.invokeMethod(
+        'isAccessibilityServiceEnabled',
+      );
+
+      if (!isEnabled) {
+        debugPrint('접근성 서비스가 비활성화되어 있습니다.');
+        // 접근성 설정 화면을 열어서 사용자가 직접 활성화하도록 안내
+        await platform.invokeMethod('openAccessibilitySettings');
+        debugPrint('접근성 설정 화면을 열었습니다.');
+      } else {
+        debugPrint('접근성 서비스가 이미 활성화되어 있습니다.');
+      }
+    }
+  } catch (e) {
+    debugPrint('접근성 서비스 권한 확인 실패: $e');
   }
 }
 
