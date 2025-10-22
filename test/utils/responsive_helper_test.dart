@@ -33,7 +33,7 @@ void main() {
           home: Builder(
             builder: (context) {
               final responsive = context.responsive;
-              
+
               // Act
               final fontSize = responsive.fontSize(
                 mobileRatio: 0.05,
@@ -41,7 +41,7 @@ void main() {
                 min: 12.0,
                 max: 28.0,
               );
-              
+
               // Assert
               expect(fontSize, greaterThanOrEqualTo(12.0));
               expect(fontSize, lessThanOrEqualTo(28.0));
@@ -59,10 +59,10 @@ void main() {
           home: Builder(
             builder: (context) {
               final responsive = context.responsive;
-              
+
               // Act
               final iconSize = responsive.iconSize();
-              
+
               // Assert
               expect(iconSize, greaterThanOrEqualTo(UiConstants.iconSizeSmall));
               expect(iconSize, lessThanOrEqualTo(UiConstants.iconSizeLarge));
@@ -93,4 +93,3 @@ void main() {
     });
   });
 }
-
