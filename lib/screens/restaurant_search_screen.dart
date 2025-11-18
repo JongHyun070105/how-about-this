@@ -334,205 +334,126 @@ class _RestaurantSearchScreenState
       final selectedApp = await _showDeliveryAppDialog();
       if (selectedApp == null) return;
 
-      // 🔥 각 앱별 URL 스킴 및 웹 폴백 URL 설정
-      String appScheme;
-      String webFallbackUrl;
-
-      // 음식점 정보 인코딩
-      final encodedName = Uri.encodeComponent(restaurant.placeName);
-      final encodedAddress = Uri.encodeComponent(restaurant.addressName);
-      final encodedPhone = Uri.encodeComponent(restaurant.phone);
-      final lat = restaurant.y;
-      final lng = restaurant.x;
-
       switch (selectedApp) {
         case 'baemin':
-          // 배민: 여러 딥링크 패턴 시도
-          // 시도 1: 검색
-          appScheme = 'baemin://search?query=$encodedName';
-          // 시도 2: 위치 기반
-          // appScheme = 'baemin://location?lat=$lat&lng=$lng';
-          // 시도 3: 가게 ID (불가능 - ID를 모름)
-          webFallbackUrl = 'https://www.baemin.com/';
-          break;
         case 'yogiyo':
-          // 요기요: 검색 딥링크 시도
-          appScheme = 'yogiyo://search?query=$encodedName';
-          webFallbackUrl = 'https://www.yogiyo.co.kr/';
-          break;
         case 'coupang_eats':
-          // 쿠팡이츠: 검색 딥링크 시도
-          appScheme = 'coupangeats://search?q=$encodedName';
-          webFallbackUrl = 'https://www.coupangeats.com/';
+          // 배민, 요기요, 쿠팡이츠: 클립보드 복사 → 안내 → 앱 열기
+          await _launchOtherDeliveryApp(restaurant, selectedApp);
           break;
         case 'kakao_map':
-          // 카카오맵: 앱 내에서 직접 위치 표시 (웹 리디렉션 방지)
-          appScheme = 'kakaomap://look?p=${restaurant.y},${restaurant.x}&app=1';
-          webFallbackUrl =
-              'https://map.kakao.com/link/map/${restaurant.placeName},${restaurant.y},${restaurant.x}';
+          // 카카오맵: 앱 내에서 직접 위치 표시
+          await _launchKakaoMap(restaurant);
           break;
         default:
           return;
-      }
-
-      // 🔥 여러 딥링크 패턴 시도 (하나씩 테스트)
-      final webUri = Uri.parse(webFallbackUrl);
-      bool appLaunched = false;
-
-      // 배달앱별로 여러 URL 패턴 시도
-      List<String> urlsToTry = [];
-
-      if (selectedApp == 'baemin') {
-        urlsToTry = [
-          // 다양한 파라미터 조합 시도
-          'baemin://search?keyword=$encodedName',
-          'baemin://search?q=$encodedName',
-          'baemin://search?text=$encodedName',
-          'baemin://search?name=$encodedName',
-          'baemin://shop?query=$encodedName',
-          'baemin://shop?name=$encodedName',
-          'baemin://store?name=$encodedName',
-          'baemin://restaurant?name=$encodedName',
-          'baemin://place?name=$encodedName',
-          // 경로 방식
-          'baemin://search/$encodedName',
-          'baemin://shop/$encodedName',
-          // 위치 기반
-          'baemin://map?lat=$lat&lng=$lng&query=$encodedName',
-          'baemin://location?lat=$lat&lng=$lng&name=$encodedName',
-          // 최후의 수단: 기본 앱 실행
-          'baemin://',
-        ];
-      } else if (selectedApp == 'yogiyo') {
-        urlsToTry = [
-          // 주소로 검색 (가장 유망)
-          'yogiyoapp://search?address=$encodedAddress',
-          'yogiyoapp://location?address=$encodedAddress',
-          'yogiyoapp://search?keyword=$encodedAddress',
-          'yogiyoapp://search?query=$encodedAddress',
-          // 주소 + 위치
-          'yogiyoapp://location?lat=$lat&lng=$lng&address=$encodedAddress',
-          'yogiyoapp://search?lat=$lat&lng=$lng&address=$encodedAddress',
-          // 음식점명 + 주소
-          'yogiyoapp://search?name=$encodedName&address=$encodedAddress',
-          'yogiyoapp://search?keyword=$encodedName $encodedAddress',
-          // 전화번호
-          'yogiyoapp://search?phone=$encodedPhone',
-          'yogiyoapp://restaurant?phone=$encodedPhone',
-          // 음식점명으로 검색
-          'yogiyoapp://search?keyword=$encodedName',
-          'yogiyoapp://search?query=$encodedName',
-          'yogiyoapp://location?lat=$lat&lng=$lng&keyword=$encodedName',
-          // 위치만
-          'yogiyoapp://location?lat=$lat&lng=$lng',
-          // 기본 실행
-          'yogiyoapp://',
-          'yogiyo://',
-        ];
-      } else if (selectedApp == 'coupang_eats') {
-        urlsToTry = [
-          'coupangeats://search?q=$encodedName',
-          'coupangeats://search?query=$encodedName',
-          'coupangeats://store?name=$encodedName',
-          'coupangeats://',
-        ];
-      } else {
-        // 카카오맵은 확실한 URL이 있으므로 바로 시도
-        urlsToTry = [appScheme];
-      }
-
-      // 각 URL 패턴을 순차적으로 시도
-      for (final urlPattern in urlsToTry) {
-        try {
-          final uri = Uri.parse(urlPattern);
-          final canLaunch = await canLaunchUrl(uri);
-
-          if (canLaunch) {
-            // 성공 시 로그 출력 (어떤 URL이 작동했는지 확인)
-            debugPrint('✅ 딥링크 성공: $urlPattern');
-
-            // 🔥 배달앱의 경우: 클립보드 복사 → 안내 → 앱 열기
-            if (selectedApp != 'kakao_map') {
-              // 1. 클립보드에 음식점 이름 복사
-              await Clipboard.setData(
-                ClipboardData(text: restaurant.placeName),
-              );
-
-              // 2. 스낵바로 안내 (사용자가 확인할 때까지 대기)
-              if (mounted) {
-                final shouldProceed = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => AlertDialog(
-                    title: const Text('📋 복사 완료!'),
-                    content: Text(
-                      '"${restaurant.placeName}"이(가)\n클립보드에 복사되었습니다.\n\n'
-                      '앱에서 검색창에 붙여넣기하여\n주문하세요!',
-                      textAlign: TextAlign.center,
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('취소'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('앱 열기'),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (shouldProceed != true) {
-                  appLaunched = false;
-                  break;
-                }
-              }
-
-              // 3. 앱 열기
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              appLaunched = true;
-            } else {
-              // 카카오맵은 바로 열기
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              appLaunched = true;
-            }
-            break;
-          }
-        } catch (e) {
-          debugPrint('❌ 딥링크 실패: $urlPattern - $e');
-          continue;
-        }
-      }
-
-      // 모든 URL 패턴 실패 시 웹으로 폴백
-      if (!appLaunched) {
-        try {
-          await launchUrl(webUri, mode: LaunchMode.externalApplication);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('앱이 설치되지 않아 웹으로 이동합니다.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        } catch (webError) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('앱 또는 웹을 열 수 없습니다: $webError'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('오류가 발생했습니다: $e')));
+      }
+    }
+  }
+
+  /// 다른 배달앱 실행 (요기요, 쿠팡이츠)
+  Future<void> _launchOtherDeliveryApp(
+    KakaoPlace restaurant,
+    String appName,
+  ) async {
+    // 1. 클립보드에 음식점 이름 복사
+    await Clipboard.setData(ClipboardData(text: restaurant.placeName));
+
+    // 2. 스낵바로 안내
+    if (mounted) {
+      final shouldProceed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('📋 복사 완료!'),
+          content: Text(
+            '"${restaurant.placeName}"이(가)\n클립보드에 복사되었습니다.\n\n'
+            '앱에서 검색창에 붙여넣기하여\n주문하세요!',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('앱 열기'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldProceed != true) return;
+    }
+
+    // 3. 앱 열기
+    String appScheme;
+    switch (appName) {
+      case 'baemin':
+        appScheme = 'baemin://';
+        break;
+      case 'yogiyo':
+        appScheme = 'yogiyo://';
+        break;
+      case 'coupang_eats':
+        appScheme = 'coupangeats://';
+        break;
+      default:
+        return;
+    }
+
+    try {
+      final uri = Uri.parse(appScheme);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('앱을 열 수 없습니다.');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('앱을 열 수 없습니다'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 카카오맵 실행
+  Future<void> _launchKakaoMap(KakaoPlace restaurant) async {
+    try {
+      final appScheme =
+          'kakaomap://look?p=${restaurant.y},${restaurant.x}&app=1';
+      final webUrl =
+          'https://map.kakao.com/link/map/${restaurant.placeName},${restaurant.y},${restaurant.x}';
+
+      final uri = Uri.parse(appScheme);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // 앱이 없으면 웹으로
+        await launchUrl(
+          Uri.parse(webUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('카카오맵을 열 수 없습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -567,4 +488,5 @@ class _RestaurantSearchScreenState
       onTap: () => Navigator.of(context).pop(value),
     );
   }
+
 }
