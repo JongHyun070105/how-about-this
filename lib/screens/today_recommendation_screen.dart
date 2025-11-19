@@ -339,7 +339,7 @@ class _TodayRecommendationScreenState
 
       if (!context.mounted) return;
 
-      final result = await showDialog<bool>(
+      final result = await showDialog<dynamic>(
         context: context,
         barrierDismissible: false,
         barrierColor: Colors.black54,
@@ -383,10 +383,15 @@ class _TodayRecommendationScreenState
 
   Future<void> _handleDialogResult(
     BuildContext context,
-    bool? result,
+    dynamic result,
     VoidCallback openDialog,
   ) async {
     if (!context.mounted) return;
+
+    // "근처 음식점 찾기" 버튼 클릭 시 리뷰 프롬프트 표시하지 않음
+    if (result == 'search') {
+      return;
+    }
 
     if (result == true) {
       final usageTrackingService = ref.read(usageTrackingServiceProvider);
