@@ -1,4 +1,4 @@
-// Cloudflare Workers API Proxy for ReviewAI
+그럼// Cloudflare Workers API Proxy for ReviewAI
 // JWT 기반 동적 토큰 인증 + Rate Limiting
 
 // Rate limiting 설정
