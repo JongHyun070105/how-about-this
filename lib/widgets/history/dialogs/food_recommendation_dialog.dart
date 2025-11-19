@@ -302,7 +302,7 @@ class _FoodRecommendationDialogState
                         // 근처 음식점 찾기 버튼 (좋아요/다른걸로 버튼과 동일한 너비)
                         ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.of(context).pop();
+                            Navigator.of(context).pop('search');
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => RestaurantSearchScreen(
