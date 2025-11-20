@@ -1,4 +1,4 @@
-그럼// Cloudflare Workers API Proxy for ReviewAI
+// Cloudflare Workers API Proxy for ReviewAI
 // JWT 기반 동적 토큰 인증 + Rate Limiting
 
 // Rate limiting 설정
@@ -508,7 +508,7 @@ async function handleKakaoLocalProxy(request, env) {
     size: size,
     sort: "distance",
   });
-  
+
   // 카테고리 그룹 코드가 있으면 추가
   if (categoryGroupCode) {
     kakaoParams.append("category_group_code", categoryGroupCode);
