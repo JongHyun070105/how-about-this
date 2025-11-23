@@ -197,6 +197,16 @@ export default {
         return handleKakaoLocalProxy(request, env);
       }
 
+      // 동적 설정 API
+      if (path === "/api/config" && request.method === "GET") {
+        return handleConfig(env);
+      }
+
+      // 서버 시간 API (시스템 시간 조작 방지)
+      if (path === "/api/server-time" && request.method === "GET") {
+        return handleServerTime(request, env);
+      }
+
       return jsonResponse({ error: "Not Found" }, 404, CORS_HEADERS);
     } catch (error) {
       console.error("Worker error:", error);
@@ -326,7 +336,7 @@ async function handleTokenRefresh(request, env) {
   }
 }
 
-// Gemini API 프록시 핸들러
+// Gemini API 프록시 핸들러 (Durable Object 사용)
 async function handleGeminiProxy(request, env) {
   // JWT 검증
   const authHeader = request.headers.get("Authorization");
@@ -342,10 +352,8 @@ async function handleGeminiProxy(request, env) {
   }
 
   const token = authHeader.substring(7);
-  let user;
-
   try {
-    user = await verifyJWT(token, env.JWT_SECRET);
+    await verifyJWT(token, env.JWT_SECRET);
   } catch (error) {
     if (error.message === "Token expired") {
       return jsonResponse(
@@ -355,70 +363,21 @@ async function handleGeminiProxy(request, env) {
       );
     }
     return jsonResponse(
-      { error: "Invalid token", message: "Token verification failed" },
+      { error: "Invalid token", message: "Authentication failed" },
       401,
       CORS_HEADERS
     );
   }
 
-  // 추가 보안 검증
-  if (!user.deviceId || !user.deviceHash) {
-    return jsonResponse(
-      {
-        error: "Invalid token payload",
-        message: "Token missing required information",
-      },
-      401,
-      CORS_HEADERS
-    );
-  }
-
-  const body = await request.json();
-  const { endpoint, requestBody } = body;
-
-  // 유효한 엔드포인트만 허용
-  const allowedEndpoints = [
-    "generateContent",
-    "generateReviews",
-    "validateImage",
-    "buildPersonalizedRecommendationPrompt",
-    "buildGenericRecommendationPrompt",
-  ];
-
-  if (!endpoint || !allowedEndpoints.includes(endpoint)) {
-    return jsonResponse({ error: "Invalid endpoint" }, 400, CORS_HEADERS);
-  }
-
-  // Gemini API 키 가져오기
-  const apiKey = env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY not found in environment variables");
-    return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
-  }
-
-  // Gemini API 호출
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:${endpoint}?key=${apiKey}`;
-
-  const response = await fetch(geminiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Gemini API error:", response.status, errorText);
-    return jsonResponse(
-      { error: "Gemini API error", details: errorText },
-      response.status,
-      CORS_HEADERS
-    );
-  }
-
-  const data = await response.json();
-  return jsonResponse(data, 200, CORS_HEADERS);
+  // Durable Object를 통해 Gemini API 호출 (미국 리전 강제)
+  // "US_PROXY"라는 이름으로 고정된 DO ID 생성
+  const id = env.GEMINI_PROXY.idFromName("US_PROXY");
+  
+  // locationHint를 'wnam' (Western North America)로 설정하여 미국에 생성 유도
+  const stub = env.GEMINI_PROXY.get(id, { locationHint: "wnam" });
+  
+  // DO에 요청 전달
+  return stub.fetch(request);
 }
 
 // 카카오 로컬 API 프록시 핸들러
@@ -536,6 +495,75 @@ async function handleKakaoLocalProxy(request, env) {
   return jsonResponse(data, 200, CORS_HEADERS);
 }
 
+// 동적 설정 핸들러
+function handleConfig(env) {
+  return jsonResponse(
+    {
+      adMob: {
+        ios: {
+          rewarded: env.ADMOB_IOS_REWARDED || "",
+          banner: env.ADMOB_IOS_BANNER || "",
+        },
+        android: {
+          rewarded: env.ADMOB_ANDROID_REWARDED || "",
+          banner: env.ADMOB_ANDROID_BANNER || "",
+        },
+      },
+    },
+    200,
+    CORS_HEADERS
+  );
+}
+
+// 서버 시간 핸들러 (시스템 시간 조작 방지)
+async function handleServerTime(request, env) {
+  // JWT 검증
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return jsonResponse(
+      {
+        error: "No valid token provided",
+        message: "Authorization header with Bearer token is required",
+      },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    // JWT 검증
+    await verifyJWT(token, env.JWT_SECRET);
+    
+    // 현재 서버 시간 (UTC)
+    const now = new Date();
+    
+    return jsonResponse(
+      {
+        serverTime: now.toISOString(),
+        timestamp: now.getTime(),
+        timezone: "UTC",
+      },
+      200,
+      CORS_HEADERS
+    );
+  } catch (error) {
+    if (error.message === "Token expired") {
+      return jsonResponse(
+        { error: "Token expired", message: "Please refresh your token" },
+        401,
+        CORS_HEADERS
+      );
+    }
+    return jsonResponse(
+      { error: "Invalid token", message: "Authentication failed" },
+      401,
+      CORS_HEADERS
+    );
+  }
+}
+
 // JSON 응답 헬퍼
 function jsonResponse(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -545,4 +573,72 @@ function jsonResponse(data, status = 200, headers = {}) {
       ...headers,
     },
   });
+}
+
+// Durable Object 클래스 정의
+export class GeminiProxy {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    try {
+      const body = await request.json();
+      const { endpoint, requestBody } = body;
+
+      // 유효한 엔드포인트만 허용
+      const allowedEndpoints = [
+        "generateContent",
+        "generateReviews",
+        "validateImage",
+        "buildPersonalizedRecommendationPrompt",
+        "buildGenericRecommendationPrompt",
+      ];
+
+      if (!endpoint || !allowedEndpoints.includes(endpoint)) {
+        return jsonResponse({ error: "Invalid endpoint" }, 400, CORS_HEADERS);
+      }
+
+      // Gemini API 키 가져오기
+      const apiKey = this.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.error("GEMINI_API_KEY not found in environment variables");
+        return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
+      }
+
+      // Gemini API 호출
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:${endpoint}?key=${apiKey}`;
+
+      console.log(`Calling Gemini API from DO: ${geminiUrl}`);
+
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API error:", response.status, errorText);
+        return jsonResponse(
+          { error: "Gemini API error", details: errorText },
+          response.status,
+          CORS_HEADERS
+        );
+      }
+
+      const data = await response.json();
+      return jsonResponse(data, 200, CORS_HEADERS);
+    } catch (error) {
+      console.error("Durable Object error:", error);
+      return jsonResponse(
+        { error: "Internal server error in DO", details: error.message },
+        500,
+        CORS_HEADERS
+      );
+    }
+  }
 }
