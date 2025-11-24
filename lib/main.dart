@@ -12,16 +12,16 @@ import 'dart:async';
 import 'package:review_ai/providers/food_providers.dart';
 import 'package:review_ai/screens/today_recommendation_screen.dart';
 import 'package:review_ai/widgets/common/app_dialogs.dart';
-// dotenv는 더 이상 사용하지 않음 (API 키가 서버로 이전됨)
 import 'package:http/http.dart' as http;
 import 'package:review_ai/services/api_proxy_service.dart';
 import 'package:review_ai/services/usage_tracking_service.dart';
 import 'package:review_ai/services/auth_service.dart';
+import 'package:review_ai/services/config_service.dart';
+import 'package:review_ai/services/server_time_service.dart';
 import 'package:review_ai/config/api_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
-// network_utils는 더 이상 사용하지 않음
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -37,19 +37,18 @@ final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // dotenv 로딩 제거됨 - API 키가 서버에서 관리됨
-
   final config = ClarityConfig(
     projectId: "sy9cat27ff",
     logLevel: LogLevel.None,
   );
 
   try {
-    // 병렬 초기화로 성능 개선
     await Future.wait([
       SecurityInitializer.initialize(),
       MobileAds.instance.initialize(),
       AuthService.initialize(),
+      ConfigService.initialize(),
+      ServerTimeService.initialize(),
       _configureSystemUI(),
       _requestLocationPermission(),
       _requestAccessibilityPermission(),
@@ -86,14 +85,12 @@ Future<void> _configureSystemUI() async {
 
 Future<void> _requestLocationPermission() async {
   try {
-    // 위치 서비스가 활성화되어 있는지 확인
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       debugPrint('위치 서비스가 비활성화되어 있습니다.');
       return;
     }
 
-    // 위치 권한 상태 확인
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       // 권한이 거부된 경우 요청
