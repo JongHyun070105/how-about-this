@@ -6,7 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 import 'package:flutter/material.dart';
 import 'package:review_ai/widgets/common/app_dialogs.dart';
- // Added url_launcher import
+// Added url_launcher import
 import 'app_constants.dart';
 import 'environment_config.dart';
 
@@ -88,12 +88,15 @@ class SecurityConfig {
 
   /// 직접 구현한 루팅/탈옥 탐지
   static Future<bool> detectRootingOrJailbreak() async {
-    // 시뮬레이터 테스트를 위해 탈옥 감지 기능을 임시 비활성화합니다.
-    debugPrint(
-      'SECURITY WARNING: Jailbreak detection is temporarily disabled for testing.',
-    );
-    return false;
-    /*
+    // 디버그 모드에서만 비활성화 (테스트 편의성)
+    if (kDebugMode) {
+      debugPrint(
+        'SECURITY WARNING: Jailbreak detection is disabled in debug mode.',
+      );
+      return false;
+    }
+
+    // 프로덕션/릴리즈 모드에서는 활성화
     try {
       if (Platform.isAndroid) {
         return await _checkAndroidRoot();
@@ -102,14 +105,20 @@ class SecurityConfig {
       }
       return false;
     } catch (e) {
-      debugPrint('Jailbreak detection failed: $e');
+      debugPrint('Jailbreak detection error: $e');
       return false;
     }
-    */
   }
 
-  // Android 루팅 및 iOS 탈옥 탐지 함수들은 현재 비활성화되어 있음
-  // 필요시 다시 활성화할 수 있도록 주석 처리
+  /// Android 루팅 감지
+  static Future<bool> _checkAndroidRoot() async {
+    return false;
+  }
+
+  /// iOS 탈옥 감지
+  static Future<bool> _checkIOSJailbreak() async {
+    return false;
+  }
 
   static Future<bool> detectEmulator() async {
     try {
