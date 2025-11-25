@@ -437,62 +437,77 @@ async function handleKakaoLocalProxy(request, env) {
   const size = url.searchParams.get("size") || "15";
   const categoryGroupCode = url.searchParams.get("category_group_code"); // 카테고리 그룹 코드
 
-  // 필수 파라미터 검증
-  if (!query || !x || !y) {
+  try {
+    // 필수 파라미터 검증
+    if (!query || !x || !y) {
+      return jsonResponse(
+        {
+          error: "Missing required parameters",
+          message: "query, x (longitude), and y (latitude) are required",
+        },
+        400,
+        CORS_HEADERS
+      );
+    }
+
+    // 카카오 API 키 가져오기
+    const apiKey = env.KAKAO_API_KEY;
+    if (!apiKey) {
+      console.error("KAKAO_API_KEY not found in environment variables");
+      return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
+    }
+
+    // 카카오 로컬 API 호출
+    const kakaoUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
+    const kakaoParams = new URLSearchParams({
+      query: query,
+      x: x,
+      y: y,
+      radius: radius,
+      page: page,
+      size: size,
+      sort: "distance",
+    });
+
+    // 카테고리 그룹 코드가 있으면 추가
+    if (categoryGroupCode) {
+      kakaoParams.append("category_group_code", categoryGroupCode);
+    }
+
+    console.log(`Calling Kakao API: ${kakaoUrl}?${kakaoParams}`);
+
+    const response = await fetch(`${kakaoUrl}?${kakaoParams}`, {
+      method: "GET",
+      headers: {
+        Authorization: `KakaoAK ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Kakao API error:", response.status, errorText);
+      return jsonResponse(
+        { error: "Kakao API error", status: response.status, details: errorText },
+        response.status,
+        CORS_HEADERS
+      );
+    }
+
+    const data = await response.json();
+    return jsonResponse(data, 200, CORS_HEADERS);
+  } catch (error) {
+    console.error("Worker Error in handleKakaoLocalProxy:", error);
     return jsonResponse(
       {
-        error: "Missing required parameters",
-        message: "query, x (longitude), and y (latitude) are required",
+        error: "Internal Server Error",
+        message: error.message,
+        stack: error.stack,
       },
-      400,
+      500,
       CORS_HEADERS
     );
   }
-
-  // 카카오 API 키 가져오기
-  const apiKey = env.KAKAO_API_KEY;
-  if (!apiKey) {
-    console.error("KAKAO_API_KEY not found in environment variables");
-    return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
-  }
-
-  // 카카오 로컬 API 호출
-  const kakaoUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
-  const kakaoParams = new URLSearchParams({
-    query: query,
-    x: x,
-    y: y,
-    radius: radius,
-    page: page,
-    size: size,
-    sort: "distance",
-  });
-
-  // 카테고리 그룹 코드가 있으면 추가
-  if (categoryGroupCode) {
-    kakaoParams.append("category_group_code", categoryGroupCode);
-  }
-
-  const response = await fetch(`${kakaoUrl}?${kakaoParams}`, {
-    method: "GET",
-    headers: {
-      Authorization: `KakaoAK ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Kakao API error:", response.status, errorText);
-    return jsonResponse(
-      { error: "Kakao API error", details: errorText },
-      response.status,
-      CORS_HEADERS
-    );
-  }
-
-  const data = await response.json();
-  return jsonResponse(data, 200, CORS_HEADERS);
 }
 
 // 동적 설정 핸들러

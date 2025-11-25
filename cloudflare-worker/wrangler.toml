@@ -5,10 +5,39 @@ compatibility_date = "2024-01-01"
 # Workers 플랜
 workers_dev = true
 
+# Smart Placement - Gemini API가 지원되는 리전에서 실행
+[placement]
+mode = "smart"
+
 # KV Namespace for rate limiting (배포 후 생성 필요)
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "00cc2b1530ca499fbaef968ef9c7ca95"
+
+# Durable Object for Region Proxy
+[[durable_objects.bindings]]
+name = "GEMINI_PROXY"
+class_name = "GeminiProxy"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GeminiProxy"]
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = false
+head_sampling_rate = 1
+persist = false
+invocation_logs = false
+
+[observability.traces]
+enabled = false
+persist = false
+head_sampling_rate = 1
+
 
 # 환경 변수 (민감한 정보는 wrangler secret으로 설정)
 [env.production]

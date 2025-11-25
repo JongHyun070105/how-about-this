@@ -6,6 +6,9 @@ import '../providers/location_providers.dart';
 import '../models/location_models.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
+import '../widgets/delivery_app_option_list.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../config/security_config.dart';
 
 /// 맛집 검색 화면
 class RestaurantSearchScreen extends ConsumerStatefulWidget {
@@ -25,6 +28,9 @@ class RestaurantSearchScreen extends ConsumerStatefulWidget {
 
 class _RestaurantSearchScreenState
     extends ConsumerState<RestaurantSearchScreen> {
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +38,33 @@ class _RestaurantSearchScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchRestaurants();
     });
+    _loadBannerAd();
+  }
+
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: SecurityConfig.bannerAdUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print('Ad load failed (code=${error.code} message=${error.message})');
+        },
+      ),
+    );
+    _bannerAd?.load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   void _searchRestaurants() {
@@ -45,6 +78,13 @@ class _RestaurantSearchScreenState
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(restaurantSearchProvider, (previous, next) {
+      if (next.status == RestaurantSearchStatus.noPermission &&
+          previous?.status != RestaurantSearchStatus.noPermission) {
+        _showPermissionDialog();
+      }
+    });
+
     final searchState = ref.watch(restaurantSearchProvider);
 
     return Scaffold(
@@ -60,7 +100,19 @@ class _RestaurantSearchScreenState
           ),
         ],
       ),
-      body: _buildBody(searchState),
+      body: Column(
+        children: [
+          Expanded(child: _buildBody(searchState)),
+          if (_isBannerAdLoaded && _bannerAd != null)
+            RepaintBoundary(
+              child: SizedBox(
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: _bannerAd!),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -78,9 +130,20 @@ class _RestaurantSearchScreenState
     }
 
     if (state.hasError) {
+      String errorMessage = state.errorMessage ?? '오류가 발생했습니다.';
+
+      // 에러 메시지 순화
+      if (errorMessage.contains('500') ||
+          errorMessage.contains('Server error')) {
+        errorMessage = '서버 연결에 문제가 발생했습니다.\n(관리자 문의 필요: API Key 설정)';
+      } else if (errorMessage.contains('SocketException') ||
+          errorMessage.contains('Connection refused')) {
+        errorMessage = '인터넷 연결을 확인해주세요.';
+      }
+
       return Center(
         child: CustomErrorWidget(
-          message: state.errorMessage ?? '오류가 발생했습니다.',
+          message: errorMessage,
           onRetry: _searchRestaurants,
         ),
       );
@@ -100,34 +163,46 @@ class _RestaurantSearchScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.location_off, size: 64, color: Colors.grey),
+            Icon(Icons.location_disabled, size: 64, color: Colors.orange[300]),
             const SizedBox(height: 16),
             Text(
               '위치 권한이 필요합니다',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
+              '내 주변 맛집을 찾기 위해 위치 권한이 필요합니다.\n설정에서 위치 권한을 허용해주세요.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
               onPressed: () {
                 ref
                     .read(restaurantSearchProvider.notifier)
                     .requestLocationPermission();
               },
-              child: const Text('권한 허용'),
+              icon: const Icon(Icons.check),
+              label: const Text('권한 허용하기'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             TextButton(
               onPressed: () {
                 ref.read(restaurantSearchProvider.notifier).openAppSettings();
               },
-              child: const Text('설정에서 허용'),
+              child: const Text('설정으로 이동'),
             ),
           ],
         ),
@@ -253,76 +328,109 @@ class _RestaurantSearchScreenState
   }
 
   Widget _buildRestaurantCard(KakaoPlace restaurant) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        title: Text(
-          restaurant.placeName,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              restaurant.roadAddressName ?? restaurant.addressName,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-            if (restaurant.phone.isNotEmpty) ...[
-              const SizedBox(height: 2),
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          title: Text(
+            restaurant.placeName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
               Text(
-                restaurant.phone,
+                restaurant.roadAddressName ?? restaurant.addressName,
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
-            ],
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (restaurant.distanceFormatted.isNotEmpty) ...[
-                  Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    restaurant.distanceFormatted,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                ],
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      restaurant.categoryName,
-                      style: TextStyle(
-                        color: Colors.blue[700],
+              if (restaurant.phone.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  restaurant.phone,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+              ],
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  if (restaurant.distanceFormatted.isNotEmpty) ...[
+                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      restaurant.distanceFormatted,
+                      style: const TextStyle(
+                        color: Colors.grey,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        restaurant.categoryName,
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
+          trailing: const IconButton(
+            icon: Icon(Icons.delivery_dining),
+            onPressed: null,
+          ),
+          onTap: () => _launchDeliveryApp(restaurant),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delivery_dining),
-          onPressed: () => _launchDeliveryApp(restaurant),
+      ),
+    );
+  }
+
+  Future<void> _showPermissionDialog() async {
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('위치 권한 필요'),
+        content: const Text(
+          '내 주변 맛집을 찾기 위해 위치 권한이 필요합니다.\n설정에서 위치 권한을 허용해주세요.',
         ),
-        onTap: () => _launchDeliveryApp(restaurant),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // 화면 종료
+            },
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ref.read(restaurantSearchProvider.notifier).openAppSettings();
+            },
+            child: const Text('설정으로 이동'),
+          ),
+        ],
       ),
     );
   }
@@ -338,11 +446,9 @@ class _RestaurantSearchScreenState
         case 'baemin':
         case 'yogiyo':
         case 'coupang_eats':
-          // 배민, 요기요, 쿠팡이츠: 클립보드 복사 → 안내 → 앱 열기
           await _launchOtherDeliveryApp(restaurant, selectedApp);
           break;
         case 'kakao_map':
-          // 카카오맵: 앱 내에서 직접 위치 표시
           await _launchKakaoMap(restaurant);
           break;
         default:
@@ -357,7 +463,7 @@ class _RestaurantSearchScreenState
     }
   }
 
-  /// 다른 배달앱 실행 (요기요, 쿠팡이츠)
+  /// 다른 배달앱 실행 (배민, 요기요, 쿠팡이츠)
   Future<void> _launchOtherDeliveryApp(
     KakaoPlace restaurant,
     String appName,
@@ -393,37 +499,104 @@ class _RestaurantSearchScreenState
       if (shouldProceed != true) return;
     }
 
-    // 3. 앱 열기
-    String appScheme;
+    // 3. URL Scheme으로 앱 열기 (딥링크)
+    List<String> urlSchemes;
+    String packageName;
+    String appDisplayName;
+
     switch (appName) {
       case 'baemin':
-        appScheme = 'baemin://';
+        urlSchemes = ['baemin://'];
+        packageName = 'com.sampleapp';
+        appDisplayName = '배민';
         break;
       case 'yogiyo':
-        appScheme = 'yogiyo://';
+        urlSchemes = ['yogiyoapp://open'];
+        packageName = 'com.fineapp.yogiyo';
+        appDisplayName = '요기요';
         break;
       case 'coupang_eats':
-        appScheme = 'coupangeats://';
+        urlSchemes = ['coupangeats://'];
+        packageName = 'com.coupang.mobile.eats';
+        appDisplayName = '쿠팡이츠';
         break;
       default:
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('알 수 없는 앱입니다'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
     }
 
-    try {
-      final uri = Uri.parse(appScheme);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw Exception('앱을 열 수 없습니다.');
-      }
-    } catch (e) {
+    // Android에서만 작동
+    if (Theme.of(context).platform != TargetPlatform.android) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('앱을 열 수 없습니다'),
+          const SnackBar(
+            content: Text('이 기능은 Android에서만 지원됩니다'),
             backgroundColor: Colors.red,
           ),
         );
+      }
+      return;
+    }
+
+    // 여러 URL Scheme을 순차적으로 시도
+    bool launchSuccess = false;
+    for (final urlScheme in urlSchemes) {
+      try {
+        final uri = Uri.parse(urlScheme);
+        final canLaunch = await canLaunchUrl(uri);
+
+        if (canLaunch) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          launchSuccess = true;
+          break; // 성공하면 반복 중단
+        }
+      } catch (e) {
+        // 해당 scheme 실패, 다음 scheme 시도
+        continue;
+      }
+    }
+
+    // 모든 scheme이 실패한 경우
+    if (!launchSuccess && mounted) {
+      final shouldOpenStore = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('$appDisplayName 앱'),
+          content: Text(
+            '$appDisplayName 앱을 실행할 수 없습니다.\n\nPlay Store에서 앱을 설치 또는 업데이트하시겠습니까?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Play Store 열기'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldOpenStore == true) {
+        final storeUri = Uri.parse('market://details?id=$packageName');
+        try {
+          await launchUrl(storeUri, mode: LaunchMode.externalApplication);
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Play Store를 열 수 없습니다'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -431,10 +604,39 @@ class _RestaurantSearchScreenState
   /// 카카오맵 실행
   Future<void> _launchKakaoMap(KakaoPlace restaurant) async {
     try {
-      final appScheme =
-          'kakaomap://look?p=${restaurant.y},${restaurant.x}&app=1';
-      final webUrl =
-          'https://map.kakao.com/link/map/${restaurant.placeName},${restaurant.y},${restaurant.x}';
+      // 현재 위치 가져오기
+      final searchState = ref.read(restaurantSearchProvider);
+      final currentLocation = searchState.currentLocation;
+      final latitude = currentLocation?.latitude;
+      final longitude = currentLocation?.longitude;
+
+      String appScheme;
+      String webUrl;
+
+      if (latitude != null && longitude != null) {
+        // 출발지 좌표가 있는 경우: 길찾기 모드
+        final startLat = latitude;
+        final startLng = longitude;
+        final startName = Uri.encodeComponent('내 위치');
+        final endName = Uri.encodeComponent(restaurant.placeName);
+
+        appScheme =
+            'kakaomap://route?'
+            'sp=$startLat,$startLng&'
+            'ep=${restaurant.y},${restaurant.x}&'
+            'sn=$startName&'
+            'en=$endName';
+
+        webUrl =
+            'https://map.kakao.com/link/to/'
+            '${restaurant.placeName},${restaurant.y},${restaurant.x}/'
+            'from/내 위치,$startLat,$startLng';
+      } else {
+        // 출발지 좌표가 없는 경우: 장소 보기 모드
+        appScheme = 'kakaomap://look?p=${restaurant.y},${restaurant.x}&app=1';
+        webUrl =
+            'https://map.kakao.com/link/map/${restaurant.placeName},${restaurant.y},${restaurant.x}';
+      }
 
       final uri = Uri.parse(appScheme);
       if (await canLaunchUrl(uri)) {
@@ -464,29 +666,10 @@ class _RestaurantSearchScreenState
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('앱 선택'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDeliveryAppOption('baemin', '배민', '🍱'),
-            _buildDeliveryAppOption('yogiyo', '요기요', '🍜'),
-            _buildDeliveryAppOption('coupang_eats', '쿠팡이츠', '📦'),
-            _buildDeliveryAppOption('kakao_map', '카카오맵', '🗺️'),
-          ],
+        content: DeliveryAppOptionList(
+          onSelect: (value) => Navigator.of(context).pop(value),
         ),
       ),
     );
   }
-
-  /// 배달앱 옵션 위젯
-  Widget _buildDeliveryAppOption(String value, String name, String emoji) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Colors.grey[200],
-        child: Text(emoji, style: const TextStyle(fontSize: 20)),
-      ),
-      title: Text(name),
-      onTap: () => Navigator.of(context).pop(value),
-    );
-  }
-
 }

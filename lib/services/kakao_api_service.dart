@@ -1,7 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/location_models.dart';
 import 'auth_service.dart';
+import '../utils/error_handler.dart';
+import '../utils/network_utils.dart';
 
 /// 카카오 로컬 API 서비스
 /// 맛집 검색을 위한 카카오 로컬 API를 호출합니다.
@@ -9,6 +12,9 @@ class KakaoApiService {
   static const Duration _timeout = Duration(seconds: 10);
 
   late final Dio _dio;
+
+  // 검색 결과 캐시
+  final Map<String, _CachedSearchResult> _searchCache = {};
 
   KakaoApiService() {
     _dio = Dio(
@@ -21,11 +27,30 @@ class KakaoApiService {
     );
   }
 
+  /// 캐시 키 생성
+  String _getCacheKey(RestaurantSearchParams params) {
+    return '${params.query}_${params.latitude}_${params.longitude}_${params.categoryGroupCode ?? "none"}';
+  }
+
   /// 키워드로 장소를 검색합니다.
   Future<KakaoSearchResponse> searchPlaces(
     RestaurantSearchParams params,
   ) async {
     try {
+      // 캐시 확인
+      final cacheKey = _getCacheKey(params);
+      final cachedResult = _searchCache[cacheKey];
+
+      if (cachedResult != null && !cachedResult.isExpired) {
+        debugPrint('Serving restaurant search from cache: $cacheKey');
+        return cachedResult.response;
+      }
+
+      // 네트워크 연결 확인
+      if (!await NetworkUtils.checkInternetConnectivity()) {
+        throw KakaoApiException('인터넷 연결을 확인해주세요.');
+      }
+
       // JWT 토큰 가져오기
       final token = await AuthService.getValidAccessToken();
 
@@ -36,11 +61,20 @@ class KakaoApiService {
       );
 
       if (response.statusCode == 200) {
-        // 🔒 null 체크: response.data가 null일 수 있음
         if (response.data == null) {
           throw KakaoApiException('API 응답 데이터가 없습니다.');
         }
-        return KakaoSearchResponse.fromJson(response.data);
+
+        final searchResponse = KakaoSearchResponse.fromJson(response.data);
+
+        // 캐시 저장
+        _searchCache[cacheKey] = _CachedSearchResult(
+          response: searchResponse,
+          timestamp: DateTime.now(),
+        );
+        debugPrint('Cached restaurant search result: $cacheKey');
+
+        return searchResponse;
       } else {
         throw KakaoApiException(
           'API 호출 실패: ${response.statusCode}',
@@ -63,7 +97,7 @@ class KakaoApiService {
         throw KakaoApiException('API 호출 중 오류가 발생했습니다: ${e.message}');
       }
     } catch (e) {
-      throw KakaoApiException('예상치 못한 오류가 발생했습니다: ${e.toString()}');
+      throw KakaoApiException(ErrorHandler.sanitizeMessage(e));
     }
   }
 
@@ -78,7 +112,6 @@ class KakaoApiService {
     int size = 15,
   }) async {
     try {
-      // 🔥 핵심 변경: 카테고리 코드 사용
       final categoryCode = _getCategoryCode(category);
 
       final params = RestaurantSearchParams(
@@ -154,7 +187,7 @@ class KakaoApiService {
   List<KakaoPlace> filterRestaurants(
     List<KakaoPlace> restaurants, {
     String? targetCategory, // 원하는 카테고리
-    String? foodName, // 🔥 음식명 추가: 정확한 매칭을 위해
+    String? foodName, // 음식명 추가: 정확한 매칭을 위해
     double? minRating,
     int? maxDistance,
     List<String>? excludeCategories,
@@ -167,7 +200,7 @@ class KakaoApiService {
         }
       }
 
-      // 🔥 음식명 필터링: 음식점 이름이나 카테고리에 음식명이 포함되어야 함
+      // 음식명 필터링: 음식점 이름이나 카테고리에 음식명이 포함되어야 함
       if (foodName != null && foodName.isNotEmpty) {
         final nameLower = restaurant.placeName.toLowerCase();
         final categoryLower = restaurant.categoryName.toLowerCase();
@@ -184,7 +217,7 @@ class KakaoApiService {
         }
       }
 
-      // 🔥 카테고리 정확도 필터링 강화
+      // 카테고리 정확도 필터링 강화
       if (targetCategory != null) {
         final categoryLower = restaurant.categoryName.toLowerCase();
 
@@ -300,4 +333,16 @@ enum RestaurantSortType {
   distance, // 거리순
   name, // 이름순
   category, // 카테고리순
+}
+
+/// 검색 결과 캐시
+class _CachedSearchResult {
+  final KakaoSearchResponse response;
+  final DateTime timestamp;
+
+  _CachedSearchResult({required this.response, required this.timestamp});
+
+  bool get isExpired {
+    return DateTime.now().difference(timestamp) > const Duration(minutes: 5);
+  }
 }

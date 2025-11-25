@@ -231,3 +231,21 @@ class RestaurantSearchState {
   bool get hasRestaurants => restaurants.isNotEmpty;
   bool get hasLocation => currentLocation != null;
 }
+
+/// 위치 관련 예외
+class LocationException implements Exception {
+  final String message;
+  const LocationException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+/// 위치 권한 거부 예외
+class UserPermissionDeniedException implements Exception {
+  final String message;
+  const UserPermissionDeniedException(this.message);
+
+  @override
+  String toString() => message;
+}

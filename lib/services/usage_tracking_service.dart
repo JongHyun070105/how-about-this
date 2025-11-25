@@ -1,4 +1,6 @@
 import 'package:review_ai/services/persistent_storage_service.dart';
+import 'package:review_ai/services/server_time_service.dart';
+import 'package:flutter/foundation.dart';
 
 class UsageTrackingService {
   final PersistentStorageService _storageService = PersistentStorageService();
@@ -8,40 +10,103 @@ class UsageTrackingService {
   static const String _reviewCountKey = 'review_count';
   static const String _totalRecommendationCountKey =
       'total_recommendation_count';
+  static const String _lastAccessTimestampKey = 'last_access_timestamp';
 
   static const int _maxReviewsPerDay = 5;
   static const int _maxTotalRecommendationsPerDay = 40;
 
-  /// 사용량 카운터를 초기화합니다 (자정 기준).
+  /// 사용량 카운터를 초기화합니다 (서버 시간 기준).
   Future<void> _resetCountsIfNewDay() async {
-    final lastResetDateStr = await _storageService.getValue<String>(
-      _usageDataFile,
-      _lastResetDateKey,
-    );
-    final now = DateTime.now();
+    try {
+      // 서버 시간 가져오기
+      final serverDate = await ServerTimeService.getCurrentDate();
+      final serverTimestamp = serverDate.millisecondsSinceEpoch;
 
-    if (lastResetDateStr != null) {
-      final lastResetDate = DateTime.parse(lastResetDateStr);
-      if (lastResetDate.year == now.year &&
-          lastResetDate.month == now.month &&
-          lastResetDate.day == now.day) {
-        // 같은 날이면 초기화하지 않음
-        return;
+      final lastResetDateStr = await _storageService.getValue<String>(
+        _usageDataFile,
+        _lastResetDateKey,
+      );
+
+      final lastAccessTimestamp = await _storageService.getValue<int>(
+        _usageDataFile,
+        _lastAccessTimestampKey,
+      );
+
+      if (lastAccessTimestamp != null &&
+          serverTimestamp < lastAccessTimestamp) {
+        final diff = lastAccessTimestamp - serverTimestamp;
+        debugPrint(
+          'Time manipulation detected! Last access was ${diff}ms in the future',
+        );
       }
-    }
 
-    // 새 날이거나 첫 실행이면 모든 카운트 초기화
-    await _storageService.setValue(_usageDataFile, _reviewCountKey, 0);
-    await _storageService.setValue(
-      _usageDataFile,
-      _totalRecommendationCountKey,
-      0,
-    );
-    await _storageService.setValue(
-      _usageDataFile,
-      _lastResetDateKey,
-      now.toIso8601String().substring(0, 10),
-    );
+      if (lastResetDateStr != null) {
+        final lastResetDate = DateTime.parse(lastResetDateStr);
+        if (lastResetDate.year == serverDate.year &&
+            lastResetDate.month == serverDate.month &&
+            lastResetDate.day == serverDate.day) {
+          // 같은 날이면 초기화하지 않음
+          // 마지막 접근 시간만 업데이트
+          await _storageService.setValue(
+            _usageDataFile,
+            _lastAccessTimestampKey,
+            serverTimestamp,
+          );
+          return;
+        }
+      }
+
+      // 새 날이거나 첫 실행이면 모든 카운트 초기화
+      await _storageService.setValue(_usageDataFile, _reviewCountKey, 0);
+      await _storageService.setValue(
+        _usageDataFile,
+        _totalRecommendationCountKey,
+        0,
+      );
+      await _storageService.setValue(
+        _usageDataFile,
+        _lastResetDateKey,
+        serverDate.toIso8601String().substring(0, 10),
+      );
+      await _storageService.setValue(
+        _usageDataFile,
+        _lastAccessTimestampKey,
+        serverTimestamp,
+      );
+
+      debugPrint(
+        'Usage counts reset for new day: ${serverDate.toIso8601String()}',
+      );
+    } catch (e) {
+      debugPrint('Error in _resetCountsIfNewDay: $e');
+      // 에러 발생 시 로컬 시간 사용 (폴백)
+      final now = DateTime.now();
+      final lastResetDateStr = await _storageService.getValue<String>(
+        _usageDataFile,
+        _lastResetDateKey,
+      );
+
+      if (lastResetDateStr != null) {
+        final lastResetDate = DateTime.parse(lastResetDateStr);
+        if (lastResetDate.year == now.year &&
+            lastResetDate.month == now.month &&
+            lastResetDate.day == now.day) {
+          return;
+        }
+      }
+
+      await _storageService.setValue(_usageDataFile, _reviewCountKey, 0);
+      await _storageService.setValue(
+        _usageDataFile,
+        _totalRecommendationCountKey,
+        0,
+      );
+      await _storageService.setValue(
+        _usageDataFile,
+        _lastResetDateKey,
+        now.toIso8601String().substring(0, 10),
+      );
+    }
   }
 
   /// 리뷰 생성 횟수를 증가시키고 제한을 확인합니다.

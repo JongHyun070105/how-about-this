@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/location_service.dart';
 import '../services/kakao_api_service.dart';
 import '../models/location_models.dart';
+import '../utils/error_handler.dart';
 
 /// 위치 서비스 프로바이더
 final locationServiceProvider = Provider<LocationService>((ref) {
@@ -90,27 +91,15 @@ class RestaurantSearchNotifier extends StateNotifier<RestaurantSearchState> {
         restaurants: sortedRestaurants,
         errorMessage: null,
       );
-    } on LocationException catch (e) {
-      if (e.message.contains('권한')) {
-        state = state.copyWith(
-          status: RestaurantSearchStatus.noPermission,
-          errorMessage: e.message,
-        );
-      } else {
-        state = state.copyWith(
-          status: RestaurantSearchStatus.error,
-          errorMessage: e.message,
-        );
-      }
-    } on KakaoApiException catch (e) {
+    } on UserPermissionDeniedException catch (e) {
       state = state.copyWith(
-        status: RestaurantSearchStatus.error,
+        status: RestaurantSearchStatus.noPermission,
         errorMessage: e.message,
       );
     } catch (e) {
       state = state.copyWith(
         status: RestaurantSearchStatus.error,
-        errorMessage: '예상치 못한 오류가 발생했습니다: ${e.toString()}',
+        errorMessage: ErrorHandler.sanitizeMessage(e),
       );
     }
   }
@@ -142,7 +131,7 @@ class RestaurantSearchNotifier extends StateNotifier<RestaurantSearchState> {
     } catch (e) {
       state = state.copyWith(
         status: RestaurantSearchStatus.error,
-        errorMessage: '권한 요청 중 오류가 발생했습니다: ${e.toString()}',
+        errorMessage: ErrorHandler.sanitizeMessage(e),
       );
     }
   }

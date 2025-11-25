@@ -6,14 +6,17 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:review_ai/config/api_config.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
-/// 최고 수준 보안을 위한 동적 토큰 인증 서비스
+/// JWT 기반 동적 토큰 인증 서비스
 class AuthService {
   static const String _tokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _tokenExpiryKey = 'token_expiry';
   static const String _deviceIdKey = 'device_id';
 
+  static const _storage = FlutterSecureStorage();
   static String? _cachedAccessToken;
   static String? _cachedRefreshToken;
   static DateTime? _tokenExpiry;
@@ -22,7 +25,6 @@ class AuthService {
   /// 유효한 액세스 토큰을 반환 (자동 갱신 포함)
   static Future<String> getValidAccessToken() async {
     try {
-      // 캐시된 토큰이 있고 유효하면 반환
       if (_cachedAccessToken != null &&
           _tokenExpiry != null &&
           DateTime.now().isBefore(_tokenExpiry!)) {
@@ -40,7 +42,6 @@ class AuthService {
           }
         } catch (e) {
           debugPrint('Token refresh failed: $e');
-          // 리프레시 실패시 새로 발급
         }
       }
 
@@ -49,7 +50,7 @@ class AuthService {
       return await _requestNewToken();
     } catch (e) {
       debugPrint('AuthService error: $e');
-      throw AuthException('인증 토큰을 가져올 수 없습니다: ${e.toString()}');
+      throw AuthException('인증 토큰을 가져올 수 없습니다.');
     }
   }
 
@@ -80,22 +81,21 @@ class AuthService {
           .timeout(const Duration(seconds: 10));
 
       debugPrint('Token response status: ${response.statusCode}');
-      // 🔒 보안: 토큰 내용은 로그에 출력하지 않음 (프로덕션)
       if (kDebugMode) {
         debugPrint('Token response received (length: ${response.body.length})');
       }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // 🔒 null 체크: 필수 필드 검증
-        if (data['accessToken'] == null || data['refreshToken'] == null || data['expiresIn'] == null) {
+        if (data['accessToken'] == null ||
+            data['refreshToken'] == null ||
+            data['expiresIn'] == null) {
           throw AuthException('토큰 응답에 필수 필드가 누락되었습니다.');
         }
         final accessToken = data['accessToken'] as String;
         final refreshToken = data['refreshToken'] as String;
         final expiresIn = data['expiresIn'] as int;
 
-        // 토큰 캐싱
         await _cacheTokens(accessToken, refreshToken, expiresIn);
 
         return accessToken;
@@ -106,7 +106,6 @@ class AuthService {
             '토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'} (Status: ${response.statusCode})',
           );
         } catch (e) {
-          // JSON 파싱 실패 시 (HTML 응답 등)
           throw AuthException(
             '토큰 발급 실패: 서버 응답 오류 (Status: ${response.statusCode}). Response: ${response.body.substring(0, 100)}',
           );
@@ -128,7 +127,6 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      // 🔒 null 체크: 필수 필드 검증
       if (data['accessToken'] == null || data['expiresIn'] == null) {
         throw AuthException('토큰 갱신 응답에 필수 필드가 누락되었습니다.');
       }
@@ -146,18 +144,17 @@ class AuthService {
     }
   }
 
-  /// 토큰 캐싱
+  /// 토큰 캐싱 (Secure Storage 사용)
   static Future<void> _cacheTokens(
     String accessToken,
     String refreshToken,
     int expiresIn,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
     final expiry = DateTime.now().add(Duration(seconds: expiresIn));
 
-    await prefs.setString(_tokenKey, accessToken);
-    await prefs.setString(_refreshTokenKey, refreshToken);
-    await prefs.setString(_tokenExpiryKey, expiry.toIso8601String());
+    await _storage.write(key: _tokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
+    await _storage.write(key: _tokenExpiryKey, value: expiry.toIso8601String());
 
     _cachedAccessToken = accessToken;
     _cachedRefreshToken = refreshToken;
@@ -169,11 +166,10 @@ class AuthService {
     String accessToken,
     int expiresIn,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
     final expiry = DateTime.now().add(Duration(seconds: expiresIn));
 
-    await prefs.setString(_tokenKey, accessToken);
-    await prefs.setString(_tokenExpiryKey, expiry.toIso8601String());
+    await _storage.write(key: _tokenKey, value: accessToken);
+    await _storage.write(key: _tokenExpiryKey, value: expiry.toIso8601String());
 
     _cachedAccessToken = accessToken;
     _tokenExpiry = expiry;
@@ -181,10 +177,7 @@ class AuthService {
 
   /// 토큰 캐시 클리어
   static Future<void> _clearTokens() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
-    await prefs.remove(_tokenExpiryKey);
+    await _storage.deleteAll();
 
     _cachedAccessToken = null;
     _cachedRefreshToken = null;
@@ -195,22 +188,15 @@ class AuthService {
   static Future<String> _getOrCreateDeviceId() async {
     if (_deviceId != null) return _deviceId!;
 
-    final prefs = await SharedPreferences.getInstance();
-    _deviceId = prefs.getString(_deviceIdKey);
+    _deviceId = await _storage.read(key: _deviceIdKey);
 
     if (_deviceId == null) {
-      _deviceId = _generateDeviceId();
-      await prefs.setString(_deviceIdKey, _deviceId!);
+      _deviceId = const Uuid().v4();
+      await _storage.write(key: _deviceIdKey, value: _deviceId!);
+      debugPrint('New device ID generated and stored securely');
     }
 
     return _deviceId!;
-  }
-
-  /// 디바이스 ID 생성
-  static String _generateDeviceId() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = (timestamp * 1000 + (timestamp % 1000)).toString();
-    return 'device_${random}_${DateTime.now().microsecondsSinceEpoch}';
   }
 
   /// 앱 버전 가져오기
@@ -247,19 +233,18 @@ class AuthService {
   /// 앱 시작시 캐시된 토큰 로드
   static Future<void> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _cachedAccessToken = await _storage.read(key: _tokenKey);
+      _cachedRefreshToken = await _storage.read(key: _refreshTokenKey);
 
-      _cachedAccessToken = prefs.getString(_tokenKey);
-      _cachedRefreshToken = prefs.getString(_refreshTokenKey);
-
-      final expiryString = prefs.getString(_tokenExpiryKey);
+      final expiryString = await _storage.read(key: _tokenExpiryKey);
       if (expiryString != null) {
         _tokenExpiry = DateTime.parse(expiryString);
       }
 
+      final prefs = await SharedPreferences.getInstance();
       _deviceId = prefs.getString(_deviceIdKey);
 
-      debugPrint('AuthService initialized');
+      debugPrint('AuthService initialized (Secure Storage)');
     } catch (e) {
       debugPrint('AuthService initialization failed: $e');
     }

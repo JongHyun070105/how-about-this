@@ -172,7 +172,7 @@ class ImageUploadSection extends ConsumerWidget {
         imageQuality: UiConstants.imageQuality,
       );
 
-      // 🔒 권한 거부 처리: picked가 null이면 사용자가 취소했거나 권한이 없음
+      // 권한 거부 처리: picked가 null이면 사용자가 취소했거나 권한이 없음
       if (picked == null) {
         // 사용자가 직접 취소한 경우는 조용히 리턴
         ref.read(isPickingImageProvider.notifier).state = false;

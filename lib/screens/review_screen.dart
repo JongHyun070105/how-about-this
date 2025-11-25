@@ -279,6 +279,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         maxLength: AppConstants.maxFoodNameLength,
         autocorrect: false,
         enableSuggestions: false,
+        enableInteractiveSelection: false,
         onChanged: (text) =>
             ref.read(reviewProvider.notifier).setFoodName(text),
         style: TextStyle(

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-// permission_handler는 더 이상 사용하지 않음
 import '../models/location_models.dart';
+import '../utils/error_handler.dart';
 
 /// 위치 서비스 클래스
 /// 사용자의 현재 위치를 가져오고 권한을 관리합니다.
@@ -17,21 +17,18 @@ class LocationService {
   /// 캐시된 위치가 있고 유효하면 캐시를 반환합니다.
   Future<UserLocation?> getCurrentLocation() async {
     try {
-      // 캐시된 위치가 유효한지 확인
       if (_isLocationCacheValid()) {
         return _cachedLocation;
       }
 
-      // 위치 권한 확인
       final permission = await _checkLocationPermission();
       debugPrint('현재 위치 권한 상태: $permission');
       if (permission != LocationPermissionStatus.whileInUse &&
           permission != LocationPermissionStatus.always) {
         debugPrint('위치 권한이 부족합니다. 현재 상태: $permission');
-        throw LocationException('위치 권한이 필요합니다.');
+        throw UserPermissionDeniedException('위치 권한이 필요합니다.');
       }
 
-      // 위치 서비스 활성화 확인
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw LocationException('위치 서비스가 비활성화되어 있습니다.');
@@ -53,8 +50,10 @@ class LocationService {
       _lastLocationUpdate = DateTime.now();
 
       return _cachedLocation;
+    } on UserPermissionDeniedException {
+      rethrow;
     } catch (e) {
-      throw LocationException('위치를 가져올 수 없습니다: ${e.toString()}');
+      throw LocationException(ErrorHandler.sanitizeMessage(e));
     }
   }
 

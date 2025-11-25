@@ -43,7 +43,6 @@ class ReviewService {
           height: image.height > image.width ? 800 : null,
         );
 
-        // 임시 파일로 저장
         final tempDir = await getTemporaryDirectory();
         final tempFile = File(
           '${tempDir.path}/optimized_${DateTime.now().millisecondsSinceEpoch}.jpg',
@@ -123,14 +122,12 @@ class ReviewService {
         timeoutFuture,
       ]);
 
-      // 임시 파일 정리
       if (optimizedImage != null && optimizedImage != reviewState.image) {
         try {
           await optimizedImage.delete();
           debugPrint('임시 최적화 이미지 파일 삭제 완료');
         } catch (e) {
           debugPrint('임시 파일 삭제 실패: $e');
-          // 임시 파일 삭제 실패는 무시
         }
       }
 

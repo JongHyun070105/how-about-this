@@ -165,7 +165,7 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
       debugPrint('📂 리뷰 히스토리 로드 완료: ${entries.length}개');
       state = entries;
     } catch (e) {
-      debugPrint('❌ 리뷰 히스토리 로드 오류: $e');
+      debugPrint('리뷰 히스토리 로드 오류: $e');
       await clearHistory();
     }
   }
@@ -197,10 +197,10 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
         );
         state = currentHistory;
       } else {
-        debugPrint('⚠️ 중복 리뷰 감지, 저장하지 않음');
+        debugPrint('중복 리뷰 감지, 저장하지 않음');
       }
     } catch (e) {
-      debugPrint('❌ 리뷰 저장 오류: $e');
+      debugPrint('리뷰 저장 오류: $e');
     }
   }
 

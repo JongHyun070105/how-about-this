@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-// dotenv는 더 이상 사용하지 않음 (API 키가 서버로 이전됨)
 import 'package:review_ai/models/food_recommendation.dart';
 import 'package:review_ai/services/api_proxy_service.dart';
 import 'package:review_ai/config/api_config.dart';
@@ -32,7 +31,7 @@ class RecommendationService {
     // 개인화 추천 사용 (타 카테고리 혼동 방지)
     final prompt = await apiProxyService.buildPersonalizedRecommendationPrompt(
       category: category,
-      recentFoods: [], // 빈 배열로 최근 음식 제외 기능 비활성화
+      recentFoods: [],
     );
 
     try {
@@ -51,13 +50,10 @@ class RecommendationService {
 
       final List<dynamic> decodedList = jsonDecode(cleanedJson);
 
-      // 🔥 개수 확인 로그
-      debugPrint('📊 AI가 생성한 음식 개수: ${decodedList.length}개');
+      debugPrint('AI가 생성한 음식 개수: ${decodedList.length}개');
 
-      // 🔥 번호 제거 로직: "1. 짜장면" -> "짜장면"
       final recommendations = decodedList.map((item) {
         if (item is Map<String, dynamic> && item['name'] != null) {
-          // 정규식으로 "1. ", "2. ", ... 형식의 번호 제거
           final cleanedName = (item['name'] as String).replaceFirst(
             RegExp(r'^\d+\.\s*'),
             '',
@@ -67,7 +63,7 @@ class RecommendationService {
         return FoodRecommendation.fromJson(item);
       }).toList();
 
-      debugPrint('✅ 파싱 완료: ${recommendations.length}개 음식 추천');
+      debugPrint('파싱 완료: ${recommendations.length}개 음식 추천');
 
       await _saveToCache(cacheKey, recommendations);
 

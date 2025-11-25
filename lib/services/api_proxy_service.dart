@@ -7,6 +7,7 @@ import 'package:review_ai/models/exceptions.dart';
 import 'package:review_ai/services/user_preference_service.dart';
 import 'package:review_ai/services/auth_service.dart';
 import 'package:review_ai/config/api_config.dart';
+import '../utils/error_handler.dart';
 
 /// Cloudflare Workers API 프록시 서버를 통한 Gemini API 호출 서비스
 class ApiProxyService {
@@ -42,9 +43,10 @@ class ApiProxyService {
 
       if (response.statusCode == 200) {
         final responseBody = utf8.decode(response.bodyBytes);
-        // 🔒 보안: 전체 응답 대신 길이만 로그 (디버그 모드에서만)
         if (kDebugMode) {
-          debugPrint('Proxy API Response received (length: ${responseBody.length})');
+          debugPrint(
+            'Proxy API Response received (length: ${responseBody.length})',
+          );
         }
         return jsonDecode(responseBody);
       } else {
@@ -60,7 +62,7 @@ class ApiProxyService {
       throw NetworkException('인터넷 연결을 확인해주세요.');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('알 수 없는 오류가 발생했습니다: ${e.toString()}');
+      throw ApiException(ErrorHandler.sanitizeMessage(e));
     }
   }
 
@@ -155,7 +157,7 @@ class ApiProxyService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ParsingException('리뷰 생성 중 알 수 없는 오류: ${e.toString()}');
+      throw ParsingException('리뷰 생성 중 오류가 발생했습니다.');
     }
   }
 
@@ -206,12 +208,12 @@ class ApiProxyService {
         throw ImageValidationException('API 응답을 파싱하는 데 실패했습니다: ${e.message}');
       } catch (e) {
         // Catch other potential errors during parsing, like type errors
-        throw ImageValidationException('이미지 검증 중 알 수 없는 오류: ${e.toString()}');
+        throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');
       }
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ImageValidationException('이미지 검증 중 알 수 없는 오류: ${e.toString()}');
+      throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');
     }
   }
 

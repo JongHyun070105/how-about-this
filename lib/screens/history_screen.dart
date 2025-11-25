@@ -64,7 +64,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea: false, // SafeArea 비활성화
+      useSafeArea: false,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
