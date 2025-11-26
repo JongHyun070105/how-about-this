@@ -5,9 +5,10 @@ import 'package:review_ai/services/api_proxy_service.dart';
 import 'package:review_ai/config/api_config.dart';
 import 'user_preference_service.dart';
 import 'dart:math';
-import 'package:review_ai/config/app_constants.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:review_ai/services/weather_service.dart';
 
 class RecommendationService {
   static const String _cacheKeyPrefix = 'recommendation_cache_';
@@ -40,13 +41,30 @@ class RecommendationService {
           response['candidates'][0]['content']['parts'][0]['text'];
 
       if (jsonString == null) {
+        debugPrint('ERROR: No text in Gemini response');
         throw Exception('Gemini API로부터 응답을 받지 못했습니다.');
       }
 
-      final cleanedJson = jsonString
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
+      debugPrint(
+        'Raw Gemini response (first 200 chars): ${jsonString.substring(0, jsonString.length > 200 ? 200 : jsonString.length)}',
+      );
+
+      var cleanedJson = jsonString.trim();
+
+      // Remove markdown code blocks if present
+      if (cleanedJson.startsWith('```json')) {
+        cleanedJson = cleanedJson
+            .replaceAll('```json', '')
+            .replaceAll('```', '');
+      } else if (cleanedJson.startsWith('```')) {
+        cleanedJson = cleanedJson.replaceAll('```', '');
+      }
+
+      cleanedJson = cleanedJson.trim();
+
+      debugPrint(
+        'Cleaned JSON for parsing (first 200 chars): ${cleanedJson.substring(0, cleanedJson.length > 200 ? 200 : cleanedJson.length)}',
+      );
 
       final List<dynamic> decodedList = jsonDecode(cleanedJson);
 
@@ -68,8 +86,9 @@ class RecommendationService {
       await _saveToCache(cacheKey, recommendations);
 
       return recommendations;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Gemini API 호출 또는 파싱 오류: $e');
+      debugPrint('Stack trace: $stackTrace');
       return Future.error('음식 추천을 받아오는 데 실패했습니다. 다시 시도해주세요.');
     }
   }
@@ -118,17 +137,19 @@ class RecommendationService {
     }
   }
 
-  static FoodRecommendation pickSmartFood(
+  static ({FoodRecommendation food, String reason}) pickSmartFood(
     List<FoodRecommendation> foods,
     List<String> recentFoods,
-    UserPreferenceAnalysis preferences,
-  ) {
+    UserPreferenceAnalysis preferences, {
+    WeatherCondition? weather,
+  }) {
     if (foods.isEmpty) {
       throw Exception("추천 가능한 음식이 없습니다.");
     }
 
     final random = Random();
 
+    // 1. 기본 필터링 (최근 먹은 음식, 싫어하는 음식 제외)
     List<FoodRecommendation> available = foods
         .where((f) => !recentFoods.contains(f.name))
         .where((f) => !preferences.dislikedFoods.contains(f.name))
@@ -145,24 +166,136 @@ class RecommendationService {
       }
     }
 
-    if (preferences.preferredFoods.isNotEmpty) {
-      final preferredAvailable = available
-          .where((f) => preferences.preferredFoods.contains(f.name))
-          .toList();
+    // 2. 가중치 기반 추천 시스템
+    // 각 음식에 가중치를 부여 (기본 1.0)
+    Map<FoodRecommendation, double> weightedFoods = {
+      for (var f in available) f: 1.0,
+    };
 
-      if (preferredAvailable.isNotEmpty && random.nextDouble() < 0.7) {
-        available = preferredAvailable;
+    // 2-1. 선호 음식 가중치 증가 (x 1.5)
+    if (preferences.preferredFoods.isNotEmpty) {
+      for (var f in available) {
+        if (preferences.preferredFoods.contains(f.name)) {
+          weightedFoods[f] = (weightedFoods[f] ?? 1.0) * 1.5;
+        }
       }
     }
 
-    final chosen = available[random.nextInt(available.length)];
-
-    recentFoods.add(chosen.name);
-    if (recentFoods.length > AppConstants.recentFoodsLimit) {
-      recentFoods.removeAt(0);
+    // 2-2. 날씨 기반 가중치 증가 (x 2.0)
+    if (weather != null) {
+      _applyWeatherWeights(weightedFoods, weather);
     }
 
-    return chosen;
+    // 3. 가중치에 따른 확률적 선택
+    final selectedFood = _selectWeightedFood(weightedFoods, random);
+
+    // 4. 추천 사유 생성
+    String reason = _generateReason(selectedFood, preferences, weather);
+
+    return (food: selectedFood, reason: reason);
+  }
+
+  static String _generateReason(
+    FoodRecommendation food,
+    UserPreferenceAnalysis preferences,
+    WeatherCondition? weather,
+  ) {
+    // 1. 날씨 기반 사유 (가장 우선)
+    if (weather != null) {
+      if ((weather == WeatherCondition.rain ||
+              weather == WeatherCondition.drizzle ||
+              weather == WeatherCondition.thunderstorm) &&
+          (food.name.contains('전') ||
+              food.name.contains('국') ||
+              food.name.contains('탕') ||
+              food.name.contains('찌개') ||
+              food.name.contains('우동') ||
+              food.name.contains('짬뽕') ||
+              food.name.contains('라면'))) {
+        return '비 오는 날엔 역시 따뜻한 국물이나 전이죠! ☔';
+      }
+      if (weather == WeatherCondition.snow &&
+          (food.name.contains('전골') ||
+              food.name.contains('탕') ||
+              food.name.contains('국'))) {
+        return '눈 내리는 날, 몸을 녹여줄 따뜻한 요리 어때요? ❄️';
+      }
+      if (weather == WeatherCondition.clear &&
+          (food.name.contains('냉면') ||
+              food.name.contains('소바') ||
+              food.name.contains('빙수') ||
+              food.name.contains('아이스'))) {
+        return '맑은 날씨에 시원한 메뉴가 딱이에요! ☀️';
+      }
+    }
+
+    // 2. 선호 기반 사유
+    if (preferences.preferredFoods.contains(food.name)) {
+      return '평소에 좋아하시는 메뉴라 추천해봤어요! 👍';
+    }
+
+    // 3. 기본 사유 (랜덤)
+    final defaultReasons = [
+      '오늘은 이 메뉴가 유난히 맛있어 보이네요! 🤤',
+      '기분 전환이 필요할 땐 이 메뉴가 딱이죠!',
+      '한 번 드셔보시는 건 어때요?',
+      '오늘의 행운의 메뉴입니다! 🍀',
+      '탁월한 선택이 될 거예요!',
+    ];
+    return defaultReasons[Random().nextInt(defaultReasons.length)];
+  }
+
+  static void _applyWeatherWeights(
+    Map<FoodRecommendation, double> weightedFoods,
+    WeatherCondition weather,
+  ) {
+    for (var entry in weightedFoods.entries) {
+      final food = entry.key;
+      final name = food.name;
+      // final tags = food.tags; // Assuming FoodRecommendation has tags, or we use name/category
+
+      // 비/눈/흐림/천둥번개 -> 국물, 전, 따뜻한 음식
+      if (weather == WeatherCondition.rain ||
+          weather == WeatherCondition.drizzle ||
+          weather == WeatherCondition.thunderstorm ||
+          weather == WeatherCondition.snow) {
+        if (name.contains('전') || // 파전, 김치전
+            name.contains('국') || // 국수, 칼국수, 해장국
+            name.contains('탕') || // 갈비탕, 설렁탕
+            name.contains('찌개') || // 김치찌개
+            name.contains('우동') ||
+            name.contains('짬뽕') ||
+            name.contains('라면')) {
+          weightedFoods[food] = (weightedFoods[food] ?? 1.0) * 2.0;
+        }
+      }
+      // 맑음 (여름 가정) -> 시원한 음식 (냉면, 콩국수 등)
+      // 날씨 API에서 온도가 없으므로 'Clear'일 때 일부 시원한 음식 가중치 소폭 증가
+      else if (weather == WeatherCondition.clear) {
+        if (name.contains('냉면') ||
+            name.contains('소바') ||
+            name.contains('빙수') ||
+            name.contains('아이스')) {
+          weightedFoods[food] = (weightedFoods[food] ?? 1.0) * 1.5;
+        }
+      }
+    }
+  }
+
+  static FoodRecommendation _selectWeightedFood(
+    Map<FoodRecommendation, double> weightedFoods,
+    Random random,
+  ) {
+    double totalWeight = weightedFoods.values.fold(0.0, (sum, w) => sum + w);
+    double randomValue = random.nextDouble() * totalWeight;
+
+    for (var entry in weightedFoods.entries) {
+      randomValue -= entry.value;
+      if (randomValue <= 0) {
+        return entry.key;
+      }
+    }
+    return weightedFoods.keys.first;
   }
 
   static Future<Map<String, dynamic>> getUserStats() async {

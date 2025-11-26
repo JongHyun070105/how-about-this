@@ -11,12 +11,15 @@ class FoodRecommendationDialog extends ConsumerStatefulWidget {
   final List<FoodRecommendation> foods;
   final Color color;
 
+  final String reason;
+
   const FoodRecommendationDialog({
     super.key,
     required this.category,
     required this.recommended,
     required this.foods,
     required this.color,
+    required this.reason,
   });
 
   @override
@@ -137,16 +140,6 @@ class _FoodRecommendationDialogState
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: Icon(
-                  Icons.close,
-                  color: Colors.grey,
-                  size: screenWidth * 0.05,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-              ),
             ],
           ),
           content: SingleChildScrollView(
@@ -185,19 +178,25 @@ class _FoodRecommendationDialogState
                             duration: const Duration(milliseconds: 1500),
                             child: Transform.scale(
                               scale: _isSpinning ? 1.0 : _scaleAnimation.value,
-                              child: Text(
-                                _displayText,
-                                style: TextStyle(
-                                  fontFamily: 'Do Hyeon',
-                                  fontSize: _isSpinning
-                                      ? screenWidth * 0.06
-                                      : screenWidth * 0.08,
-                                  fontWeight: FontWeight.bold,
-                                  color: _isSpinning
-                                      ? Colors.grey.shade600
-                                      : textColor,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _displayText,
+                                  style: TextStyle(
+                                    fontFamily: 'Do Hyeon',
+                                    fontSize: _isSpinning
+                                        ? screenWidth * 0.06
+                                        : (_displayText.length > 15
+                                              ? screenWidth *
+                                                    0.065 // 긴 텍스트
+                                              : screenWidth * 0.08), // 짧은 텍스트
+                                    fontWeight: FontWeight.bold,
+                                    color: _isSpinning
+                                        ? Colors.grey.shade600
+                                        : textColor,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
@@ -215,7 +214,8 @@ class _FoodRecommendationDialogState
                       children: [
                         Center(
                           child: Text(
-                            '어떠세요? 🤤',
+                            widget.reason,
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'Do Hyeon',
                               fontSize: screenWidth * 0.04,
@@ -331,18 +331,6 @@ class _FoodRecommendationDialogState
                               borderRadius: BorderRadius.circular(
                                 screenWidth * 0.025,
                               ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text(
-                            '나중에 정하기',
-                            style: TextStyle(
-                              fontFamily: 'Do Hyeon',
-                              fontSize: screenWidth * 0.035,
-                              color: Colors.grey.shade600,
                             ),
                           ),
                         ),

@@ -84,33 +84,7 @@ class _ReviewSelectionScreenState extends ConsumerState<ReviewSelectionScreen> {
         highlightColor: Colors.transparent,
       ),
       actions: [
-        if (selectedReviewIndex != null)
-          Center(
-            child: Container(
-              margin: EdgeInsets.only(
-                right: responsive.horizontalPadding() * 0.5,
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: responsive.horizontalPadding() * 0.2,
-                vertical: responsive.verticalSpacing() * 0.2,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blue.withAlpha((0.1 * 255).round()),
-                borderRadius: BorderRadius.circular(
-                  responsive.isTablet ? 20.0 : 16.0,
-                ),
-              ),
-              child: Text(
-                '선택됨',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Do Hyeon',
-                  fontSize: responsive.subtitleFontSize(),
-                ),
-              ),
-            ),
-          ),
+        // 선택됨 뱃지 제거
       ],
     );
   }
@@ -316,6 +290,10 @@ class _ReviewSelectionScreenState extends ConsumerState<ReviewSelectionScreen> {
                           responsive.isTablet ? 24.0 : 20.0,
                         ),
                       ),
+                      padding: EdgeInsets.symmetric(
+                        vertical:
+                            responsive.verticalSpacing() * 0.8, // 버튼 높이 확보
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -330,8 +308,6 @@ class _ReviewSelectionScreenState extends ConsumerState<ReviewSelectionScreen> {
                               fontSize: responsive.buttonFontSize(),
                               fontWeight: FontWeight.bold,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: false,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -361,7 +337,7 @@ class _ReviewSelectionScreenState extends ConsumerState<ReviewSelectionScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? Theme.of(context).primaryColor.withAlpha((0.05 * 255).round())
+            ? Colors.blue[50] // 선택 시 연한 파란색 배경
             : Colors.white,
         borderRadius: BorderRadius.circular(responsive.isTablet ? 16.0 : 12.0),
         border: Border.all(
@@ -485,44 +461,6 @@ class _ReviewSelectionScreenState extends ConsumerState<ReviewSelectionScreen> {
                       ),
 
                       // Selection indicator at bottom
-                      if (isSelected)
-                        Container(
-                          margin: EdgeInsets.only(
-                            top: responsive.verticalSpacing() * 0.5,
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: responsive.horizontalPadding() * 0.4,
-                            vertical: responsive.verticalSpacing() * 0.2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            borderRadius: BorderRadius.circular(
-                              responsive.isTablet ? 12.0 : 8.0,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                size: responsive.iconSize() * 0.6,
-                                color: Colors.white,
-                              ),
-                              SizedBox(
-                                width: responsive.horizontalPadding() * 0.2,
-                              ),
-                              Text(
-                                '선택됨',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: Colors.white,
-                                  fontFamily: 'Do Hyeon',
-                                  fontSize: responsive.captionFontSize(),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),

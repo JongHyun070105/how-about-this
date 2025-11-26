@@ -10,7 +10,9 @@ import 'package:review_ai/viewmodels/review_viewmodel.dart';
 import 'package:review_ai/widgets/review/image_upload_section.dart';
 import 'package:review_ai/widgets/review/rating_row.dart';
 import 'package:review_ai/widgets/common/primary_action_button.dart';
+import 'package:review_ai/widgets/common/animated_loading_indicator.dart';
 import 'package:review_ai/widgets/review/review_style_section.dart';
+import 'package:review_ai/services/image_labeling_service.dart';
 
 class ReviewScreen extends ConsumerStatefulWidget {
   final FoodRecommendation food;
@@ -25,6 +27,7 @@ class ReviewScreen extends ConsumerStatefulWidget {
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   final TextEditingController _foodNameController = TextEditingController();
   bool _hasNavigatedToSelection = false;
+  final ImageLabelingService _imageLabelingService = ImageLabelingService();
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   void dispose() {
     _foodNameController.dispose();
+    _imageLabelingService.dispose();
     super.dispose();
   }
 
@@ -61,6 +65,31 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     ref.listen(reviewProvider.select((state) => state.foodName), (_, next) {
       if (_foodNameController.text != next) {
         _foodNameController.text = next;
+      }
+    });
+
+    ref.listen(reviewProvider.select((state) => state.image), (_, next) async {
+      if (next != null) {
+        final labels = await _imageLabelingService.getLabels(next);
+        if (labels.isNotEmpty && context.mounted) {
+          final suggestedFood = labels.first;
+
+          // 다이얼로그 대신 자동 입력 및 스낵바 알림
+          ref.read(reviewProvider.notifier).setFoodName(suggestedFood);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('음식명이 "$suggestedFood"(으)로 자동 입력되었습니다.'),
+              duration: const Duration(seconds: 2),
+              action: SnackBarAction(
+                label: '취소',
+                onPressed: () {
+                  ref.read(reviewProvider.notifier).setFoodName('');
+                },
+              ),
+            ),
+          );
+        }
       }
     });
 
@@ -340,27 +369,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 
   Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black.withAlpha(102),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 3.0,
-            ),
-            const SizedBox(height: 20),
-            Opacity(
-              opacity: 0.0,
-              child: Text(
-                '리뷰 생성 중...',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const AnimatedLoadingIndicator(
+      messages: [
+        '리뷰 생성 중...',
+        'AI가 글을 쓰고 있어요...',
+        '맛 표현을 다듬는 중...',
+        '거의 다 됐어요!',
+      ],
     );
   }
 }

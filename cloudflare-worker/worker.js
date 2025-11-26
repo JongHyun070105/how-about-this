@@ -207,6 +207,11 @@ export default {
         return handleServerTime(request, env);
       }
 
+      // 날씨 API 프록시
+      if (path === "/weather" && request.method === "GET") {
+        return handleWeatherProxy(request, env);
+      }
+
       return jsonResponse({ error: "Not Found" }, 404, CORS_HEADERS);
     } catch (error) {
       console.error("Worker error:", error);
@@ -503,6 +508,86 @@ async function handleKakaoLocalProxy(request, env) {
         error: "Internal Server Error",
         message: error.message,
         stack: error.stack,
+      },
+      500,
+      CORS_HEADERS
+    );
+  }
+}
+
+// 날씨 API 프록시 핸들러
+async function handleWeatherProxy(request, env) {
+  // JWT 검증
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+     return jsonResponse(
+      {
+        error: "No valid token provided",
+        message: "Authorization header with Bearer token is required",
+      },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  const token = authHeader.substring(7);
+  try {
+    await verifyJWT(token, env.JWT_SECRET);
+  } catch (error) {
+    if (error.message === "Token expired") {
+      return jsonResponse(
+        { error: "Token expired", message: "Please refresh your token" },
+        401,
+        CORS_HEADERS
+      );
+    }
+    return jsonResponse(
+      { error: "Invalid token", message: "Token verification failed" },
+      401,
+      CORS_HEADERS
+    );
+  }
+
+  const url = new URL(request.url);
+  const lat = url.searchParams.get("lat");
+  const lon = url.searchParams.get("lon");
+
+  if (!lat || !lon) {
+    return jsonResponse(
+      { error: "Missing parameters", message: "lat and lon are required" },
+      400,
+      CORS_HEADERS
+    );
+  }
+
+  const apiKey = env.OPEN_WEATHER_MAP_API_KEY;
+  if (!apiKey) {
+    console.error("OPEN_WEATHER_MAP_API_KEY not found in environment variables");
+    return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
+  }
+
+  const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=kr`;
+
+  try {
+    const response = await fetch(weatherUrl);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenWeatherMap API error:", response.status, errorText);
+      return jsonResponse(
+        { error: "Weather API error", details: errorText },
+        response.status,
+        CORS_HEADERS
+      );
+    }
+
+    const data = await response.json();
+    return jsonResponse(data, 200, CORS_HEADERS);
+  } catch (error) {
+    console.error("Worker Error in handleWeatherProxy:", error);
+    return jsonResponse(
+      {
+        error: "Internal Server Error",
+        message: error.message,
       },
       500,
       CORS_HEADERS

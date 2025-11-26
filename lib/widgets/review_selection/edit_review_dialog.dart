@@ -79,7 +79,7 @@ class _EditReviewDialogState extends ConsumerState<EditReviewDialog> {
           },
           child: const Text(
             '취소',
-            style: TextStyle(fontFamily: 'Do Hyeon', color: Colors.red),
+            style: TextStyle(fontFamily: 'SCDream', color: Colors.red),
           ),
         ),
         TextButton(
@@ -106,7 +106,7 @@ class _EditReviewDialogState extends ConsumerState<EditReviewDialog> {
           child: Text(
             '저장',
             style: TextStyle(
-              fontFamily: 'Do Hyeon',
+              fontFamily: 'SCDream',
               fontWeight: FontWeight.bold,
               color: Theme.of(context).primaryColor,
             ),

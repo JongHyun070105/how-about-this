@@ -16,7 +16,11 @@ import 'package:review_ai/widgets/category_card.dart';
 import 'package:review_ai/widgets/history/dialogs/food_recommendation_dialog.dart';
 import 'package:review_ai/widgets/history/dialogs/user_stats_dialog.dart';
 import 'package:review_ai/widgets/common/app_dialogs.dart';
+import 'package:review_ai/widgets/common/animated_loading_indicator.dart';
 import 'package:review_ai/main.dart'; // usageTrackingServiceProvider import
+import 'package:review_ai/services/weather_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TodayRecommendationScreen extends ConsumerStatefulWidget {
   const TodayRecommendationScreen({super.key});
@@ -30,11 +34,60 @@ class _TodayRecommendationScreenState
     extends ConsumerState<TodayRecommendationScreen> {
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
+  WeatherCondition? _currentWeather;
+  String _weatherMessage = '';
 
   @override
   void initState() {
     super.initState();
     _loadBannerAd();
+    _fetchWeather();
+  }
+
+  Future<void> _fetchWeather() async {
+    try {
+      // 위치 권한 확인
+      var status = await Permission.location.status;
+      if (!status.isGranted) {
+        status = await Permission.location.request();
+        if (!status.isGranted) return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+
+      final weather = await WeatherService().getCurrentWeather(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentWeather = weather;
+          _weatherMessage = _getWeatherMessage(weather);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching weather: $e');
+    }
+  }
+
+  String _getWeatherMessage(WeatherCondition weather) {
+    switch (weather) {
+      case WeatherCondition.rain:
+      case WeatherCondition.drizzle:
+      case WeatherCondition.thunderstorm:
+        return '비가 오네요 ☔ 뜨끈한 국물이나 파전 어때요?';
+      case WeatherCondition.snow:
+        return '눈이 내려요 ❄️ 따뜻한 전골 요리 추천해요!';
+      case WeatherCondition.clear:
+        return '날씨가 참 좋네요 ☀️ 시원한 냉면이나 아이스 커피?';
+      case WeatherCondition.clouds:
+        return '구름 낀 날 ☁️ 기분 전환할 맛있는 음식!';
+      default:
+        return '';
+    }
   }
 
   @override
@@ -80,7 +133,10 @@ class _TodayRecommendationScreenState
           backgroundColor: Colors.white,
           appBar: _buildAppBar(context, responsive, textTheme),
           body: _buildBody(context, responsive, foodCategories, textTheme),
-          bottomNavigationBar: SafeArea(child: _buildBottomBannerAd()),
+          bottomNavigationBar: SafeArea(
+            top: false, // 상단은 무시
+            child: _buildBottomBannerAd(),
+          ),
         ),
         if (isCategoryLoading) _buildLoadingOverlay(),
       ],
@@ -195,14 +251,31 @@ class _TodayRecommendationScreenState
       padding: EdgeInsets.symmetric(
         vertical: responsive.verticalSpacing() * 0.5,
       ),
-      child: Text(
-        '카테고리를 선택해주세요',
-        style: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-          fontSize: responsive.titleFontSize(),
-          fontFamily: 'SCDream',
-          color: Colors.grey[800],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_weatherMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                _weatherMessage,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: Colors.blue[700],
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SCDream',
+                ),
+              ),
+            ),
+          Text(
+            '카테고리를 선택해주세요',
+            style: textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: responsive.titleFontSize(),
+              fontFamily: 'SCDream',
+              color: Colors.grey[800],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -299,24 +372,13 @@ class _TodayRecommendationScreenState
   }
 
   Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black.withAlpha(102),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.white, strokeWidth: 3.0),
-            SizedBox(height: 20),
-            Opacity(
-              opacity: 0.0,
-              child: Text(
-                '음식 추천 불러오는 중...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const AnimatedLoadingIndicator(
+      messages: [
+        '음식 추천 불러오는 중...',
+        '맛집 데이터 분석 중...',
+        '오늘의 메뉴 고르는 중...',
+        '잠시만 기다려주세요...',
+      ],
     );
   }
 
@@ -330,11 +392,15 @@ class _TodayRecommendationScreenState
 
     void openDialog() async {
       final analysis = await UserPreferenceService.analyzeUserPreferences();
-      final recommended = RecommendationService.pickSmartFood(
+      final resultTuple = RecommendationService.pickSmartFood(
         foods,
         recentFoods,
         analysis,
+        weather: _currentWeather,
       );
+      final recommended = resultTuple.food;
+      final reason = resultTuple.reason;
+
       ref.read(selectedFoodProvider.notifier).state = recommended;
 
       if (!context.mounted) return;
@@ -343,8 +409,14 @@ class _TodayRecommendationScreenState
         context: context,
         barrierDismissible: false,
         barrierColor: Colors.black54,
-        builder: (_) =>
-            _buildAnimatedDialog(context, category, recommended, foods, color),
+        builder: (_) => _buildAnimatedDialog(
+          context,
+          category,
+          recommended,
+          foods,
+          color,
+          reason,
+        ),
       );
 
       if (!context.mounted) {
@@ -363,6 +435,7 @@ class _TodayRecommendationScreenState
     FoodRecommendation recommended,
     List<FoodRecommendation> foods,
     Color color,
+    String reason,
   ) {
     return SlideTransition(
       position: Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
@@ -377,6 +450,7 @@ class _TodayRecommendationScreenState
         recommended: recommended,
         foods: foods,
         color: color,
+        reason: reason,
       ),
     );
   }

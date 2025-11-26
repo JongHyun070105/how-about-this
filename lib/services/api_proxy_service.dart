@@ -77,10 +77,10 @@ class ApiProxyService {
         },
       ],
       'generationConfig': {
-        'temperature': 0.4,
-        'topK': 32,
-        'topP': 0.9,
-        'maxOutputTokens': 2048, // 🔥 50개 음식 생성을 위해 512 → 2048로 증가
+        'temperature': 0.0, // 완전 결정적 출력, 창의성 0
+        'topK': 10, // 토큰 후보 최소화
+        'topP': 0.6, // 확률 분포 최소화
+        'maxOutputTokens': 2048,
       },
     };
     return await _callGeminiApi('generateContent', requestBody);
@@ -117,9 +117,9 @@ class ApiProxyService {
           {'parts': parts},
         ],
         'generationConfig': {
-          'temperature': 0.4,
-          'topK': 32,
-          'topP': 0.9,
+          'temperature': 0.3,
+          'topK': 40,
+          'topP': 0.8,
           'maxOutputTokens': 512,
         },
       };
@@ -139,10 +139,19 @@ class ApiProxyService {
 
       try {
         // Clean the response to ensure it's valid JSON
-        final cleanedContent = content
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        var cleanedContent = content.trim();
+
+        // Remove markdown code blocks if present
+        if (cleanedContent.startsWith('```json')) {
+          cleanedContent = cleanedContent
+              .replaceAll('```json', '')
+              .replaceAll('```', '');
+        } else if (cleanedContent.startsWith('```')) {
+          cleanedContent = cleanedContent.replaceAll('```', '');
+        }
+
+        cleanedContent = cleanedContent.trim();
+
         final decoded = json.decode(cleanedContent) as List<dynamic>;
         final reviews = decoded.map((e) => e.toString()).toList();
 
@@ -192,10 +201,19 @@ class ApiProxyService {
 
       try {
         // Clean the response to ensure it's valid JSON
-        final cleanedContent = content
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        var cleanedContent = content.trim();
+
+        // Remove markdown code blocks if present
+        if (cleanedContent.startsWith('```json')) {
+          cleanedContent = cleanedContent
+              .replaceAll('```json', '')
+              .replaceAll('```', '');
+        } else if (cleanedContent.startsWith('```')) {
+          cleanedContent = cleanedContent.replaceAll('```', '');
+        }
+
+        cleanedContent = cleanedContent.trim();
+
         final decoded = json.decode(cleanedContent) as Map<String, dynamic>;
         final isFood = decoded['is_food'] as bool?;
 
@@ -214,6 +232,44 @@ class ApiProxyService {
       rethrow;
     } catch (e) {
       throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 음식 이미지 분석 (Vision AI)
+  Future<String> analyzeFoodImage(File foodImage) async {
+    const prompt =
+        'Analyze this image. Is it food? If NO, return "NOT_FOOD". If YES, return its name in Korean. Return ONLY the name or "NOT_FOOD". Do not add any punctuation or extra words.';
+
+    try {
+      Uint8List imageBytes = await foodImage.readAsBytes();
+      final parts = await _buildParts(prompt, imageBytes);
+
+      final requestBody = {
+        'contents': [
+          {'parts': parts},
+        ],
+        'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 20},
+      };
+
+      final data = await _callGeminiApi('generateContent', requestBody);
+
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        throw ParsingException('모델이 이미지를 분석할 수 없습니다.');
+      }
+
+      final content =
+          candidates[0]['content']?['parts']?[0]?['text'] as String?;
+      if (content == null) {
+        throw ParsingException('모델의 응답을 파싱할 수 없습니다.');
+      }
+
+      return content.trim();
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Vision AI Error: $e');
+      throw ParsingException('이미지 분석 중 오류가 발생했습니다.');
     }
   }
 
@@ -273,21 +329,26 @@ class ApiProxyService {
           '**주의사항**: 완성된 식사 메뉴만 추천하세요. 사이드만 있는 것(튀김만, 계란말이만) 금지.';
     } else if (category == '한식') {
       categoryRule =
-          '요청된 카테고리는 "한식"입니다. 오직 한국 전통 음식만 추천하세요.\n'
-          '**반드시 포함**: 찌개류(김치찌개, 된장찌개, 순두부찌개), 탕류(갈비탕, 삼계탕, 육개장), 구이류(불고기, 제육볶음, 삼겹살, 갈비), 밥류(비빔밥, 덮밥), 면류(냉면, 국수), 전골류(부대찌개, 김치찌개), 정식류(백반, 한정식)\n'
-          '**절대 금지**: 중식(짜장면, 짬뽕, 마파두부), 일식(스시, 라멘), 양식(파스타, 피자), 분식(떡볶이, 순대, 어묵, 김밥, 라볶이, 쫄면), 음료/디저트(팥빙수, 수정과, 식혜), 사이드 메뉴(어묵, 계란말이)';
+          '요청된 카테고리는 "한식"입니다. **메인 요리만** 추천하세요.\n'
+          '**반드시 포함**: 찌개류(김치찌개, 된장찌개, 순두부찌개), 탕류(갈비탕, 삼계탕, 육개장), 구이류(불고기, 제육볶음, 삼겹살구이, 갈비구이), 밥류(비빔밥, 덮밥류), 면류(냉면, 칼국수, 국수), 전골류(부대찌개), 정식류(백반, 한정식), 찜류(갈비찜, 아구찜)\n'
+          '**절대 금지**: 사이드/반찬(김치, 깍두기, 나물, 젓갈, 장아찌, 계란말이), 중식, 일식, 양식, 분식, 음료/디저트';
     } else if (category == '중식') {
       categoryRule =
-          '요청된 카테고리는 "중식"입니다. **아래 목록에 있는 음식만** 추천하세요.\n'
-          '**허용된 중식 메뉴 목록**: 짜장면, 짬뽕, 탕수육, 마라탕, 마라샹궈, 마파두부, 깐풍기, 볶음밥, 딤섬, 훠궈, 양장피, 깐쇼새우, 유린기, 꿔바로우, 라조기, 칠리새우, 팔보채, 우육면, 고추잡채, 유산슬, 멘보샤, 양념치킨(중식당), 깐쇼가지, 깐풍새우, 사천탕수육, 사천짜장, 삼선짜장, 삼선짬뽕, 해물짬뽕, 쟁반짜장, 유니짜장, 쟁반짬뽕, 군만두, 찐만두, 물만두, 고기만두, 왕만두, 백짬뽕, 간짜장, 쟁반볶음밥, 해물볶음밥, 새우볶음밥\n'
-          '**⚠️ 절대 창작 금지**: 위 목록에 없는 음식은 절대 추천하지 마세요. (깐풍오리 X, 마늘볶음밥 X, 깐쇼치킨 X, 딤섬밥 X)\n'
-          '**절대 금지**: 한식, 일식, 양식, "-밥" 이상한 조합';
+          '요청된 카테고리는 "중식"입니다. **메인 요리만** 추천하세요.\n'
+          '**허용 메인 요리 (면/밥 위주)**: 짜장면, 짬뽕, 볶음밥, 마라탕, 마라샹궈, 마파두부밥, 우육면, 삼선짜장, 삼선짬뽕, 해물짬뽕, 쟁반짜장, 유니짜장, 백짬뽕, 간짜장, 훠궈, 양장피, 유산슬, 팔보채, 고추잡채, 사천짜장, 쟁반볶음밥, 해물볶음밥, 새우볶음밥, 마파두부, 깐풍볶음밥\n'
+          '**절대 금지 (사이드/안주)**: 탕수육, 깐풍기, 꿔바로우, 라조기, 깐쇼새우, 유린기, 칠리새우, 멘보샤, 만두류(군만두, 찐만두, 물만두, 왕만두), 딤섬, 정도(반찬)\n'
+          '**절대 금지 (창작)**: 깐풍오리, 마늘볶음밥, 깐쇼치킨, 깐풍(고추), 존재하지 않는 모든 메뉴\n'
+          '**괄호 절대 금지**: 음식명에 괄호 사용 절대 불가 (예: 깐풍기(고추) X, 짬뽕(해물) X)';
     } else if (category == '일식') {
       categoryRule =
-          '요청된 카테고리는 "일식"입니다. 오직 일본 음식만 추천하세요. **절대 금지: 한식(김치찌개, 비빔밥), 중식(짜장면, 짬뽕, 마파두부), 양식(파스타, 피자)**';
+          '요청된 카테고리는 "일식"입니다. **메인 요리만** 추천하세요.\n'
+          '**메인 요리**: 라멘(돈코츠라멘, 미소라멘, 쇼유라멘), 우동, 소바, 돈카츠, 규동, 오야코동, 카츠동, 텐동, 가라아게동, 초밥, 회덮밥, 장어덮밥, 오코노미야키, 야키소바, 타코야키\n'
+          '**절대 금지**: 한식, 중식, 양식, 사시미만 있는 것(사시미는 안주이므로 금지)';
     } else if (category == '양식') {
       categoryRule =
-          '요청된 카테고리는 "양식"입니다. 오직 서양 음식만 추천하세요. **절대 금지: 한식(김치찌개, 비빔밥), 중식(짜장면, 짬뽕), 일식(스시, 라멘, 우동)**';
+          '요청된 카테고리는 "양식"입니다. **메인 요리만** 추천하세요.\n'
+          '**메인 요리**: 파스타(까르보나라, 알리오올리오, 로제파스타, 크림파스타, 토마토파스타), 피자(마르게리타, 페퍼로니, 하와이안, 콤비네이션), 스테이크, 함박스테이크, 리조또, 라자냐, 오믈렛, 샌드위치, 햄버거스테이크\n'
+          '**절대 금지**: 한식, 중식, 일식, 감바스만 있는 것(사이드 요리)';
     } else if (category == '분식') {
       categoryRule =
           '요청된 카테고리는 "분식"입니다. 오직 분식점 메뉴만 추천하세요.\n'
@@ -295,7 +356,9 @@ class ApiProxyService {
           '**절대 금지**: 한식(김치찌개, 갈비탕, 비빔밥), 중식(짜장면, 짬뽕), 일식(스시, 라멘), 사이드만 있는 것(계란말이만)';
     } else if (category == '아시안') {
       categoryRule =
-          '요청된 카테고리는 "아시안"입니다. 오직 동남아시아(베트남, 태국, 인도네시아) 및 남아시아(인도, 파키스탄) 음식만 추천하세요. **절대 금지: 한식, 중식, 일식, 양식**';
+          '요청된 카테고리는 "아시안"입니다. **한국에서 흔한 메뉴만** 추천하세요.\n'
+          '**허용 메뉴**: 쌀국수(베트남), 팟타이, 똠얌꿍, 쏨땀, 카오팟, 팟카파오, 그린커리, 레드커리, 옐로우커리, 팟퐁커리, 분짜, 반미, 월남쌈, 나시고랭, 미고랭, 인도커리, 난, 치킨티카마살라, 탄두리치킨, 비리야니, 락사, 렌당, 바쿠테\n'
+          '**절대 금지**: 한식, 중식, 일식, 양식, 존재하지 않는 긴 태국어 조합("팟카파오무쌉까이느아탈레무까이느아" 같은 것 X)';
     } else if (category == '패스트푸드') {
       categoryRule =
           '요청된 카테고리는 "패스트푸드"입니다. 오직 패스트푸드 메뉴만 추천하세요. (예: "햄버거", "프라이드치킨", "핫도그", "타코")';
@@ -331,19 +394,14 @@ $preferenceInfo
 
 $recentFoodsText
 
-요구사항:
-- $categoryRule
-- **ONLY 해당 카테고리**: 다른 카테고리 메뉴는 단 하나도 포함하지 마세요.
-- **🚨 실존하는 음식만**: 절대로 존재하지 않는 음식을 만들어내지 마세요. (예: 마늘볶음밥 X, 깐쇼치킨 X)
-- 한국에서 흔히 접할 수 있는 메뉴명만 사용하세요.
-- 해당 카테고리 내에서 다양한 종류의 음식으로 구성해주세요.
-- **🔥 중요: 반드시 정확히 50개를 생성하세요. 1번부터 50번까지 빠짐없이!**
-- **각 음식명 앞에 반드시 번호를 붙이세요.** (예: "1. 짜장면", "2. 짬뽕", ..., "50. 라면")
-- **🎯 음식명 규칙**:
-  * 일반적인 음식명 사용: "스테이크" (O), "스테이크(채끝)" (X), "스테이크(안심)" (X)
-  * 특정 종류가 중요한 경우만 앞에 표기: "까르보나라 파스타" (O), "파스타(까르보나라)" (X)
-  * 김밥, 삼각김밥 등은 붙여서: "참치김밥" (O), "김밥(참치)" (X)
-  * 괄호 사용 금지: 모든 음식명은 괄호 없이 자연스럽게
+🚨 **핵심 규칙** (반드시 준수):
+1. **메인 요리만**: 사이드/안주/반찬 절대 금지 (중식: 탕수육, 깐풍기, 만두, 딤섬 X)
+2. **실존 음식만**: 창작 절대 금지 (깐풍오리 X, 깐쇼치킨 X)
+3. **괄호 절대 금지**: 음식명에 괄호 절대 불가 (짜장면 O, 짬뽕(해물) X)
+4. **카테고리 준수**: $categoryRule
+5. **50개 생성**: 1~50번 빠짐없이
+6. **번호 형식**: "1. 짜장면", "2. 짬뽕" ... "50. 마라탕"
+7. **한국 식당 메뉴**: 실제 주문 가능한 메뉴만
 - 출력은 오직 순수 JSON 배열만. 설명/문장은 금지. 마크다운 금지.
 - JSON 형식: [{"name":"1. 메뉴명"}, {"name":"2. 메뉴명"}, ..., {"name":"50. 메뉴명"}]
 

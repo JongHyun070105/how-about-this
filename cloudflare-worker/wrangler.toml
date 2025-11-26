@@ -24,18 +24,18 @@ tag = "v1"
 new_sqlite_classes = ["GeminiProxy"]
 
 [observability]
-enabled = false
+enabled = true
 head_sampling_rate = 1
 
 [observability.logs]
-enabled = false
+enabled = true
 head_sampling_rate = 1
-persist = false
-invocation_logs = false
+invocation_logs = true
+persist = true
 
 [observability.traces]
 enabled = false
-persist = false
+persist = true
 head_sampling_rate = 1
 
 

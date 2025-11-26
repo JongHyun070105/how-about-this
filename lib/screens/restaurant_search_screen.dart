@@ -104,11 +104,20 @@ class _RestaurantSearchScreenState
         children: [
           Expanded(child: _buildBody(searchState)),
           if (_isBannerAdLoaded && _bannerAd != null)
-            RepaintBoundary(
-              child: SizedBox(
-                width: _bannerAd!.size.width.toDouble(),
-                height: _bannerAd!.size.height.toDouble(),
-                child: AdWidget(ad: _bannerAd!),
+            SafeArea(
+              top: false,
+              child: Container(
+                height: 60, // Fixed height for banner ad
+                width: double.infinity,
+                color: Colors.white,
+                child: FittedBox(
+                  fit: BoxFit.fill,
+                  child: SizedBox(
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
+                ),
               ),
             ),
         ],
@@ -132,13 +141,21 @@ class _RestaurantSearchScreenState
     if (state.hasError) {
       String errorMessage = state.errorMessage ?? '오류가 발생했습니다.';
 
-      // 에러 메시지 순화
+      // 에러 메시지 순화 - 기술적인 내용 제거
       if (errorMessage.contains('500') ||
-          errorMessage.contains('Server error')) {
-        errorMessage = '서버 연결에 문제가 발생했습니다.\n(관리자 문의 필요: API Key 설정)';
+          errorMessage.contains('Server error') ||
+          errorMessage.contains('API') ||
+          errorMessage.contains('api') ||
+          errorMessage.contains('Key') ||
+          errorMessage.contains('key')) {
+        errorMessage = '서버 연결에 문제가 발생했습니다.\n잠시 후 다시 시도해주세요.';
       } else if (errorMessage.contains('SocketException') ||
-          errorMessage.contains('Connection refused')) {
+          errorMessage.contains('Connection refused') ||
+          errorMessage.contains('Failed host lookup')) {
         errorMessage = '인터넷 연결을 확인해주세요.';
+      } else if (errorMessage.contains('timeout') ||
+          errorMessage.contains('Timeout')) {
+        errorMessage = '요청 시간이 초과되었습니다.\n인터넷 연결을 확인해주세요.';
       }
 
       return Center(
@@ -274,13 +291,6 @@ class _RestaurantSearchScreenState
               '다른 음식으로 검색해보세요',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('돌아가기'),
             ),
           ],
         ),
@@ -458,7 +468,7 @@ class _RestaurantSearchScreenState
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('오류가 발생했습니다: $e')));
+        ).showSnackBar(const SnackBar(content: Text('앱을 실행하는 중 오류가 발생했습니다.')));
       }
     }
   }
@@ -652,7 +662,7 @@ class _RestaurantSearchScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('카카오맵을 열 수 없습니다: $e'),
+            content: Text('카카오맵을 실행할 수 없습니다.'),
             backgroundColor: Colors.red,
           ),
         );
