@@ -45,3 +45,8 @@ app.*.map.json
 /android/app/release
 .env
 .vercel
+
+# CI/CD Secrets
+android/fastlane/service_account.json
+android/key.properties
+android/app/upload-keystore.jks

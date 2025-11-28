@@ -1,0 +1,2 @@
+json_key_file("service_account.json") # Path to the json secret file - relative to fastlane folder or absolute
+package_name("com.jonghyun.reviewai_flutter") # Your package name
