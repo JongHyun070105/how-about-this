@@ -49,6 +49,9 @@ jobs:
           bundler-cache: true
           working-directory: android
 
+      - name: List Build Outputs
+        run: ls -R build/app/outputs/bundle/release/ || echo "Build output not found"
+
       - name: Deploy to Play Store
         uses: maierj/fastlane-action@v3.0.0
         with:
