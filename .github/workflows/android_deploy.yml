@@ -42,6 +42,13 @@ jobs:
       - name: Build App Bundle
         run: flutter build appbundle --release
 
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: android
+
       - name: Deploy to Play Store
         uses: maierj/fastlane-action@v3.0.0
         with:
