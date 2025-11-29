@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:review_ai/utils/network_utils.dart';
 import 'package:review_ai/config/security_config.dart';
@@ -16,11 +17,12 @@ import 'package:review_ai/widgets/category_card.dart';
 import 'package:review_ai/widgets/history/dialogs/food_recommendation_dialog.dart';
 import 'package:review_ai/widgets/history/dialogs/user_stats_dialog.dart';
 import 'package:review_ai/widgets/common/app_dialogs.dart';
-import 'package:review_ai/widgets/common/animated_loading_indicator.dart';
+
 import 'package:review_ai/main.dart'; // usageTrackingServiceProvider import
 import 'package:review_ai/services/weather_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:review_ai/widgets/common/skeleton_loader.dart';
 
 class TodayRecommendationScreen extends ConsumerStatefulWidget {
   const TodayRecommendationScreen({super.key});
@@ -32,6 +34,14 @@ class TodayRecommendationScreen extends ConsumerStatefulWidget {
 
 class _TodayRecommendationScreenState
     extends ConsumerState<TodayRecommendationScreen> {
+  final List<String> _loadingMessages = [
+    '음식 추천 중...',
+    '맛있는 메뉴 찾는 중...',
+    'AI가 고민 중...',
+    '오늘의 메뉴를 골라볼게요...',
+  ];
+  int _currentMessageIndex = 0;
+  Timer? _messageRotationTimer;
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
   WeatherCondition? _currentWeather;
@@ -93,7 +103,26 @@ class _TodayRecommendationScreenState
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _messageRotationTimer?.cancel();
     super.dispose();
+  }
+
+  void _startLoadingMessageRotation() {
+    _currentMessageIndex = 0;
+    _messageRotationTimer?.cancel();
+    _messageRotationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentMessageIndex =
+              (_currentMessageIndex + 1) % _loadingMessages.length;
+        });
+      }
+    });
+  }
+
+  void _stopLoadingMessageRotation() {
+    _messageRotationTimer?.cancel();
+    _messageRotationTimer = null;
   }
 
   void _loadBannerAd() {
@@ -124,7 +153,8 @@ class _TodayRecommendationScreenState
   Widget build(BuildContext context) {
     final responsive = Responsive(context);
     final foodCategories = ref.watch(foodCategoriesProvider);
-    final isCategoryLoading = ref.watch(todayRecommendationViewModelProvider);
+    final isLoading = ref.watch(todayRecommendationViewModelProvider);
+
     final textTheme = Theme.of(context).textTheme;
 
     return Stack(
@@ -138,7 +168,45 @@ class _TodayRecommendationScreenState
             child: _buildBottomBannerAd(),
           ),
         ),
-        if (isCategoryLoading) _buildLoadingOverlay(),
+        if (isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.3),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: responsive.iconSize() * 2,
+                    height: responsive.iconSize() * 2,
+                    child: const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 4,
+                    ),
+                  ),
+                  SizedBox(height: responsive.verticalSpacing()),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                    child: Text(
+                      _loadingMessages[_currentMessageIndex],
+                      key: ValueKey<int>(_currentMessageIndex),
+                      style: textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'SCDream',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -285,6 +353,21 @@ class _TodayRecommendationScreenState
     Responsive responsive,
     List<FoodCategory> foodCategories,
   ) {
+    // 로딩 중이거나 카테고리가 비어있을 때 스켈레톤 표시
+    if (foodCategories.isEmpty) {
+      return Expanded(
+        child: SkeletonGrid(
+          itemCount: 6,
+          crossAxisCount: responsive.crossAxisCount(),
+          childAspectRatio: responsive.childAspectRatio(),
+          padding: EdgeInsets.only(
+            top: responsive.verticalSpacing(),
+            bottom: responsive.verticalSpacing(),
+          ),
+        ),
+      );
+    }
+
     return Expanded(
       child: GridView.builder(
         padding: EdgeInsets.only(
@@ -345,13 +428,13 @@ class _TodayRecommendationScreenState
           await usageTrackingService.incrementTotalRecommendationCount();
 
           if (context.mounted) {
+            _startLoadingMessageRotation();
             ref
                 .read(todayRecommendationViewModelProvider.notifier)
-                .handleCategoryTap(
-                  context,
-                  category,
-                  _showRecommendationDialog,
-                );
+                .handleCategoryTap(context, category, _showRecommendationDialog)
+                .whenComplete(() {
+                  _stopLoadingMessageRotation();
+                });
           }
         },
       ),
@@ -365,20 +448,8 @@ class _TodayRecommendationScreenState
 
     return Container(
       alignment: Alignment.center,
-      width: _bannerAd!.size.width.toDouble(),
       height: _bannerAd!.size.height.toDouble(),
       child: AdWidget(ad: _bannerAd!),
-    );
-  }
-
-  Widget _buildLoadingOverlay() {
-    return const AnimatedLoadingIndicator(
-      messages: [
-        '음식 추천 불러오는 중...',
-        '맛집 데이터 분석 중...',
-        '오늘의 메뉴 고르는 중...',
-        '잠시만 기다려주세요...',
-      ],
     );
   }
 
@@ -407,7 +478,7 @@ class _TodayRecommendationScreenState
 
       final result = await showDialog<dynamic>(
         context: context,
-        barrierDismissible: false,
+        barrierDismissible: true,
         barrierColor: Colors.black54,
         builder: (_) => _buildAnimatedDialog(
           context,

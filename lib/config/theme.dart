@@ -28,6 +28,12 @@ class AppTheme {
       cardTheme: _buildCardTheme(),
       snackBarTheme: _buildSnackBarTheme(),
       dialogTheme: _buildDialogTheme(),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
     );
   }
 

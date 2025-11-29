@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:review_ai/services/api_proxy_service.dart';
 import 'package:review_ai/config/api_config.dart';
@@ -17,7 +18,7 @@ class ImageLabelingService {
       }
       return [foodName];
     } catch (e) {
-      print('Vision AI Error: $e');
+      debugPrint('Vision AI Error: $e');
       return [];
     }
   }

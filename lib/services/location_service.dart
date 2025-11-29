@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/location_models.dart';
 import '../utils/error_handler.dart';
@@ -22,10 +21,10 @@ class LocationService {
       }
 
       final permission = await _checkLocationPermission();
-      debugPrint('현재 위치 권한 상태: $permission');
+      // debugPrint('현재 위치 권한 상태: $permission');
       if (permission != LocationPermissionStatus.whileInUse &&
           permission != LocationPermissionStatus.always) {
-        debugPrint('위치 권한이 부족합니다. 현재 상태: $permission');
+        // debugPrint('위치 권한이 부족합니다. 현재 상태: $permission');
         throw UserPermissionDeniedException('위치 권한이 필요합니다.');
       }
 

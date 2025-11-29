@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 class DeliveryAppOptionList extends StatelessWidget {
   final void Function(String) onSelect;
 
-  const DeliveryAppOptionList({Key? key, required this.onSelect})
-    : super(key: key);
+  const DeliveryAppOptionList({super.key, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {

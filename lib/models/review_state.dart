@@ -14,7 +14,7 @@ class ReviewState {
   final bool isLoading;
   final List<String> generatedReviews;
 
-  ReviewState({
+  const ReviewState({
     this.image,
     this.foodName = '',
     this.restaurantName = '',
@@ -28,6 +28,20 @@ class ReviewState {
     this.isLoading = false,
     this.generatedReviews = const [],
   });
+
+  const ReviewState.initial()
+    : image = null,
+      foodName = '',
+      restaurantName = '',
+      category = '',
+      emphasis = '',
+      deliveryRating = 0.0,
+      tasteRating = 0.0,
+      portionRating = 0.0,
+      priceRating = 0.0,
+      selectedReviewStyle = '재미있게',
+      isLoading = false,
+      generatedReviews = const [];
 
   ReviewState copyWith({
     File? image,

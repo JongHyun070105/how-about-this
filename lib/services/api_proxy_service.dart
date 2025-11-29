@@ -13,8 +13,13 @@ import '../utils/error_handler.dart';
 class ApiProxyService {
   final http.Client _client;
   final String _proxyUrl;
+  final Future<String?> Function()? _tokenProvider;
 
-  ApiProxyService(this._client, this._proxyUrl);
+  ApiProxyService(
+    this._client,
+    this._proxyUrl, {
+    Future<String?> Function()? tokenProvider,
+  }) : _tokenProvider = tokenProvider;
 
   /// 프록시 서버를 통한 Gemini API 호출 (JWT 인증 사용)
   Future<Map<String, dynamic>> _callGeminiApi(
@@ -24,8 +29,10 @@ class ApiProxyService {
     final url = Uri.parse('$_proxyUrl/api/gemini-proxy');
 
     try {
-      // JWT 토큰 가져오기
-      final accessToken = await AuthService.getValidAccessToken();
+      // JWT 토큰 가져오기 (주입된 provider가 있으면 사용, 없으면 기본 AuthService 사용)
+      final accessToken = _tokenProvider != null
+          ? await _tokenProvider()
+          : await AuthService.getValidAccessToken();
 
       final response = await _client
           .post(
@@ -61,6 +68,7 @@ class ApiProxyService {
     } on SocketException {
       throw NetworkException('인터넷 연결을 확인해주세요.');
     } catch (e) {
+      debugPrint('ApiProxyService Error: $e'); // 디버그 로그 추가
       if (e is ApiException) rethrow;
       throw ApiException(ErrorHandler.sanitizeMessage(e));
     }
@@ -160,8 +168,8 @@ class ApiProxyService {
         }
 
         return reviews;
-      } on FormatException catch (e) {
-        throw ParsingException('API 응답을 파싱하는 데 실패했습니다: ${e.message}');
+      } on FormatException {
+        throw ParsingException('API 응답 형식이 올바르지 않습니다.');
       }
     } on ApiException {
       rethrow;
@@ -222,8 +230,8 @@ class ApiProxyService {
         } else {
           throw ImageValidationException('이 사진은 음식 사진이 아니거나 리뷰에 적합하지 않습니다.');
         }
-      } on FormatException catch (e) {
-        throw ImageValidationException('API 응답을 파싱하는 데 실패했습니다: ${e.message}');
+      } on FormatException {
+        throw ImageValidationException('이미지 분석 결과를 처리하는 데 실패했습니다.');
       } catch (e) {
         // Catch other potential errors during parsing, like type errors
         throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');

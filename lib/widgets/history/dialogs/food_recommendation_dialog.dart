@@ -140,6 +140,13 @@ class _FoodRecommendationDialogState
                   ),
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                iconSize: screenWidth * 0.06,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ],
           ),
           content: SingleChildScrollView(
@@ -213,13 +220,20 @@ class _FoodRecommendationDialogState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Center(
-                          child: Text(
-                            widget.reason,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Do Hyeon',
-                              fontSize: screenWidth * 0.04,
-                              color: Colors.grey.shade700,
+                          child: SizedBox(
+                            height: screenHeight * 0.075,
+                            child: Center(
+                              child: Text(
+                                widget.reason,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Do Hyeon',
+                                  fontSize: screenWidth * 0.04,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
                             ),
                           ),
                         ),

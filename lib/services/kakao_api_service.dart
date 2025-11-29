@@ -94,7 +94,7 @@ class KakaoApiService {
       } else if (e.response?.statusCode == 429) {
         throw KakaoApiException('API 호출 한도를 초과했습니다.');
       } else {
-        throw KakaoApiException('API 호출 중 오류가 발생했습니다: ${e.message}');
+        throw KakaoApiException('API 호출 중 오류가 발생했습니다.');
       }
     } catch (e) {
       throw KakaoApiException(ErrorHandler.sanitizeMessage(e));

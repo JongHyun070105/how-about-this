@@ -165,7 +165,8 @@ final recommendationProvider = FutureProvider.autoDispose
         return recommendations;
       } catch (e) {
         // 에러 로깅 (배포 시 적절한 로깅 시스템 사용)
-        throw Exception('음식 추천을 가져오는데 실패했습니다: $e');
+        debugPrint('음식 추천 가져오기 실패: $e');
+        throw Exception('음식 추천을 가져오는데 실패했습니다.');
       }
     });
 

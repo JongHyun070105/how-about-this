@@ -5,8 +5,8 @@ import 'package:review_ai/models/exceptions.dart';
 import 'package:review_ai/models/food_category.dart';
 import 'package:review_ai/models/food_recommendation.dart';
 import 'package:review_ai/providers/food_providers.dart';
-import 'package:review_ai/services/recommendation_service.dart';
 import 'package:review_ai/widgets/common/app_dialogs.dart';
+import 'package:review_ai/services/recommendation_service.dart';
 
 class TodayRecommendationViewModel extends StateNotifier<bool> {
   final Ref _ref;
@@ -71,6 +71,9 @@ class TodayRecommendationViewModel extends StateNotifier<bool> {
   Future<List<FoodRecommendation>> _getFoodRecommendations(
     FoodCategory category,
   ) async {
+    // 캐싱 로직은 RecommendationService의 static 메서드 활용
+    // 실제 API 호출은 Use Case를 통해 수행
+    // TODO: 캐싱 로직을 Repository layer로 이동 필요
     return await RecommendationService.getFoodRecommendations(
       category: category.name,
     );

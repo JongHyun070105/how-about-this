@@ -190,15 +190,48 @@ class AppInitializer extends ConsumerStatefulWidget {
   ConsumerState<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _AppInitializerState extends ConsumerState<AppInitializer> {
+class _AppInitializerState extends ConsumerState<AppInitializer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _controller.forward();
     _initializeApp();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   Future<void> _initializeApp() async {
-    const minLoadingTime = Duration(milliseconds: 800); // 2초 → 0.8초로 대폭 단축
+    const minLoadingTime = Duration(
+      milliseconds: 2000,
+    ); // 애니메이션을 즐길 수 있도록 시간 조정
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -233,7 +266,7 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
                 },
-            transitionDuration: const Duration(milliseconds: 500),
+            transitionDuration: const Duration(milliseconds: 800),
           ),
         );
       }
@@ -363,7 +396,6 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   }
 
   void _launchStoreUrl() async {
-    // TODO: Replace with actual store URLs
     final url = Platform.isIOS
         ? 'https://itunes.apple.com/app/id6751484486'
         : 'https://play.google.com/store/apps/details?id=com.jonghyun.reviewai_flutter';
@@ -425,12 +457,24 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Image.asset(
-          'icon/app_logo.png',
-          width: imageSize,
-          height: imageSize,
-          filterQuality: FilterQuality.high,
-          fit: BoxFit.contain,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _opacityAnimation.value,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: child,
+              ),
+            );
+          },
+          child: Image.asset(
+            'icon/app_logo.png',
+            width: imageSize,
+            height: imageSize,
+            filterQuality: FilterQuality.high,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );

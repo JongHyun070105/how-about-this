@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/location_providers.dart';
 import '../models/location_models.dart';
-import '../widgets/common/loading_widget.dart';
+
+import 'package:review_ai/widgets/common/skeleton_loader.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/delivery_app_option_list.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -54,7 +55,9 @@ class _RestaurantSearchScreenState
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
-          print('Ad load failed (code=${error.code} message=${error.message})');
+          debugPrint(
+            'Ad load failed (code=${error.code} message=${error.message})',
+          );
         },
       ),
     );
@@ -120,7 +123,11 @@ class _RestaurantSearchScreenState
 
   Widget _buildBody(RestaurantSearchState state) {
     if (state.isLoading) {
-      return const Center(child: LoadingWidget(message: '근처 음식점을 찾고 있습니다...'));
+      return const SkeletonList(
+        itemCount: 5,
+        itemHeight: 120,
+        padding: EdgeInsets.all(16),
+      );
     }
 
     if (state.status == RestaurantSearchStatus.noPermission) {
@@ -167,14 +174,21 @@ class _RestaurantSearchScreenState
   }
 
   Widget _buildPermissionError(String message) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(screenWidth * 0.06),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.location_disabled, size: 64, color: Colors.orange[300]),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.location_disabled,
+              size: screenWidth * 0.16,
+              color: Colors.orange[300],
+            ),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               '위치 권한이 필요합니다',
               style: Theme.of(
@@ -182,7 +196,7 @@ class _RestaurantSearchScreenState
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: screenHeight * 0.015),
             Text(
               '내 주변 맛집을 찾기 위해 위치 권한이 필요합니다.\n설정에서 위치 권한을 허용해주세요.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -191,7 +205,7 @@ class _RestaurantSearchScreenState
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: screenHeight * 0.04),
             ElevatedButton.icon(
               onPressed: () {
                 ref
@@ -201,13 +215,13 @@ class _RestaurantSearchScreenState
               icon: const Icon(Icons.check),
               label: const Text('권한 허용하기'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.06,
+                  vertical: screenHeight * 0.015,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: screenHeight * 0.015),
             TextButton(
               onPressed: () {
                 ref.read(restaurantSearchProvider.notifier).openAppSettings();
@@ -221,26 +235,33 @@ class _RestaurantSearchScreenState
   }
 
   Widget _buildLocationError(String message) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(screenWidth * 0.06),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.location_searching, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.location_searching,
+              size: screenWidth * 0.16,
+              color: Colors.grey,
+            ),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               '위치를 찾을 수 없습니다',
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: screenHeight * 0.01),
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.03),
             ElevatedButton(
               onPressed: () {
                 ref
@@ -266,20 +287,27 @@ class _RestaurantSearchScreenState
   }
 
   Widget _buildNoResults() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(screenWidth * 0.06),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.search_off,
+              size: screenWidth * 0.16,
+              color: Colors.grey,
+            ),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               '근처에 맛집이 없습니다',
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: screenHeight * 0.01),
             Text(
               '다른 음식으로 검색해보세요',
               style: Theme.of(context).textTheme.bodyMedium,
