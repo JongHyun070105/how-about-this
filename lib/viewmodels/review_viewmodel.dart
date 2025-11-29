@@ -74,9 +74,21 @@ class ReviewViewModel extends StateNotifier<bool> {
     if (adShown && _rewardEarned) {
       debugPrint('광고 시청 완료 - 리뷰 생성 시작');
       await _generateReviewsAfterAd(context);
-    } else if (!adShown) {
-      debugPrint('광고 실패 - 바로 리뷰 생성');
-      await _generateReviewsAfterAd(context);
+    } else {
+      debugPrint('광고 실패 또는 보상 미획득 - 리뷰 생성 중단');
+      if (!context.mounted) return;
+
+      showAppDialog(
+        context,
+        title: '광고 시청 필요',
+        message: '리뷰를 생성하려면 광고를 시청해야 합니다.\n네트워크 상태를 확인하고 다시 시도해주세요.',
+        confirmButtonText: '다시 시도',
+        onConfirm: () {
+          // 다시 시도 (재귀 호출이 아닌 새로운 호출)
+          generateReviews(context);
+        },
+        cancelButtonText: '취소',
+      );
     }
   }
 
@@ -194,6 +206,8 @@ class ReviewViewModel extends StateNotifier<bool> {
   }
 }
 
-final reviewViewModelProvider = StateNotifierProvider<ReviewViewModel, bool>((ref) {
+final reviewViewModelProvider = StateNotifierProvider<ReviewViewModel, bool>((
+  ref,
+) {
   return ReviewViewModel(ref);
 });

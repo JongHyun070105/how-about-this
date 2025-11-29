@@ -107,17 +107,10 @@ class _RestaurantSearchScreenState
             SafeArea(
               top: false,
               child: Container(
-                height: 60, // Fixed height for banner ad
-                width: double.infinity,
-                color: Colors.white,
-                child: FittedBox(
-                  fit: BoxFit.fill,
-                  child: SizedBox(
-                    width: _bannerAd!.size.width.toDouble(),
-                    height: _bannerAd!.size.height.toDouble(),
-                    child: AdWidget(ad: _bannerAd!),
-                  ),
-                ),
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: _bannerAd!),
               ),
             ),
         ],
