@@ -857,7 +857,7 @@ class _UserStatsDialogState extends ConsumerState<UserStatsDialog> {
                       style: TextStyle(
                         fontFamily: 'Do Hyeon',
                         fontSize: screenSize.width * 0.032,
-                        color: color,
+                        color: Colors.black87,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
