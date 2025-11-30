@@ -43,7 +43,17 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
       final imageFile = _ref.read(reviewProvider).image;
       if (imageFile != null) {
         // 이미지 검증 진행
-        await validateImage(imageFile);
+        final isValid = await validateImage(imageFile);
+        if (!isValid) {
+          if (!context.mounted) return;
+          showAppDialog(
+            context,
+            title: '부적절한 이미지',
+            message: '음식 사진이 아니거나 식별하기 어렵습니다.\n정확한 음식 사진으로 다시 시도해주세요.',
+            isError: true,
+          );
+          return; // 검증 실패 시 중단 (광고 시청 X)
+        }
       }
 
       if (!context.mounted) return;
@@ -52,6 +62,11 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
       if (!context.mounted) return;
       _handleGenerationError(context, e);
     } finally {
+      // 성공 시에는 _generateReviewsAfterAd 내부에서 로딩 해제됨 (또는 여기서 해제해도 무방하지만 흐름상 주의)
+      // _handleAdFlow -> _generateReviewsAfterAd 흐름이므로,
+      // 여기서 무조건 false로 하면 광고 보는 동안 로딩이 풀릴 수 있음.
+      // 하지만 _handleAdFlow는 await하므로 광고가 끝나야 여기로 옴.
+      // 따라서 여기서 false로 해도 됨.
       _ref.read(reviewProvider.notifier).setLoading(false);
     }
   }

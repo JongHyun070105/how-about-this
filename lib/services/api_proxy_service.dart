@@ -57,11 +57,28 @@ class ApiProxyService {
         }
         return jsonDecode(responseBody);
       } else {
-        final errorData = jsonDecode(utf8.decode(response.bodyBytes));
-        throw GeminiApiException(
-          errorData['details'] ?? 'API 호출 실패',
-          statusCode: response.statusCode,
-        );
+        // 에러 응답 처리 - JSON이 아닐 수도 있음
+        final responseBody = utf8.decode(response.bodyBytes);
+        if (kDebugMode) {
+          debugPrint(
+            'API Error Response (${response.statusCode}): $responseBody',
+          );
+        }
+
+        // JSON 파싱 시도
+        try {
+          final errorData = jsonDecode(responseBody);
+          throw GeminiApiException(
+            errorData['details'] ?? errorData['error'] ?? 'API 호출 실패',
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          // JSON 파싱 실패 시 응답 본문을 그대로 사용
+          throw GeminiApiException(
+            '서버 응답 오류: ${responseBody.length > 100 ? responseBody.substring(0, 100) : responseBody}',
+            statusCode: response.statusCode,
+          );
+        }
       }
     } on TimeoutException {
       throw NetworkException('요청 시간이 초과되었습니다.');

@@ -9,6 +9,7 @@ import '../../domain/repositories/recommendation_repository.dart';
 import '../../domain/usecases/generate_review_usecase.dart';
 import '../../domain/usecases/get_recommendation_usecase.dart';
 import '../../services/api_proxy_service.dart';
+import '../../config/api_config.dart';
 
 // Data Sources
 final httpClientProvider = Provider((ref) => http.Client());
@@ -18,10 +19,7 @@ final apiProxyServiceProvider = Provider((ref) {
   // ApiProxyService가 이미 존재하므로 그것을 활용
   // 하지만 ApiProxyService는 Service Layer에 있음.
   // 점진적 리팩토링을 위해 기존 방식을 유지하되, 여기서 인스턴스화
-  return ApiProxyService(
-    ref.read(httpClientProvider),
-    'https://thoughts-recipient-flexible-reports.trycloudflare.com',
-  );
+  return ApiProxyService(ref.read(httpClientProvider), ApiConfig.proxyUrl);
 });
 
 final geminiRemoteDataSourceProvider = Provider<GeminiRemoteDataSource>((ref) {

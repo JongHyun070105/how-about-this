@@ -45,13 +45,27 @@ public class SecurityChannel implements MethodCallHandler {
 
     private boolean verifyAppSignature() {
         try {
-            PackageInfo packageInfo = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES);
+            PackageInfo packageInfo;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                
+                android.content.pm.SigningInfo signingInfo = packageInfo.signingInfo;
+                if (signingInfo.hasMultipleSigners()) {
+                    for (Signature signature : signingInfo.getApkContentsSigners()) {
+                        if (checkSignature(signature)) return true;
+                    }
+                } else {
+                    for (Signature signature : signingInfo.getSigningCertificateHistory()) {
+                        if (checkSignature(signature)) return true;
+                    }
+                }
+            } else {
+                packageInfo = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES);
 
-            for (Signature signature : packageInfo.signatures) {
-                String signatureHash = getSHA256Hash(signature.toByteArray());
-                if (EXPECTED_SIGNATURE_HASH.equals(signatureHash)) {
-                    return true;
+                for (Signature signature : packageInfo.signatures) {
+                    if (checkSignature(signature)) return true;
                 }
             }
         } catch (PackageManager.NameNotFoundException | NoSuchAlgorithmException e) {
@@ -59,6 +73,11 @@ public class SecurityChannel implements MethodCallHandler {
             return false;
         }
         return false;
+    }
+
+    private boolean checkSignature(Signature signature) throws NoSuchAlgorithmException {
+        String signatureHash = getSHA256Hash(signature.toByteArray());
+        return EXPECTED_SIGNATURE_HASH.equals(signatureHash);
     }
 
     private String getSHA256Hash(byte[] bytes) throws NoSuchAlgorithmException {

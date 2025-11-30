@@ -399,6 +399,10 @@ class _TodayRecommendationScreenState
       child: CategoryCard(
         category: category,
         onTap: () async {
+          // 이미 로딩 중이면 클릭 무시 (중복 클릭 방지)
+          final isLoading = ref.read(todayRecommendationViewModelProvider);
+          if (isLoading) return;
+
           final connected = await NetworkUtils.checkInternetConnectivity();
           if (!connected) {
             if (context.mounted) {

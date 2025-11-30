@@ -150,209 +150,223 @@ class _FoodRecommendationDialogState
             ],
           ),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Roulette display
-                Container(
-                  width: double.infinity,
-                  height: screenHeight * 0.1875,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        widget.color,
-                        widget.color.withAlpha((255 * 0.5).round()),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.color.withAlpha((255 * 0.3).round()),
-                        blurRadius: 10,
-                        spreadRadius: 2,
+            child: SizedBox(
+              width: screenWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Roulette display
+                  Container(
+                    width: double.infinity,
+                    height: screenHeight * 0.1875,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          widget.color,
+                          widget.color.withAlpha((255 * 0.5).round()),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.color.withAlpha((255 * 0.3).round()),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: AnimatedBuilder(
+                        animation: _scaleAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _isSpinning ? 1.0 : _scaleAnimation.value,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 1500),
+                              child: Transform.scale(
+                                scale: _isSpinning
+                                    ? 1.0
+                                    : _scaleAnimation.value,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    _displayText,
+                                    style: TextStyle(
+                                      fontFamily: 'Do Hyeon',
+                                      fontSize: _isSpinning
+                                          ? screenWidth * 0.06
+                                          : (_displayText.length > 15
+                                                ? screenWidth *
+                                                      0.065 // 긴 텍스트
+                                                : screenWidth * 0.08), // 짧은 텍스트
+                                      fontWeight: FontWeight.bold,
+                                      color: _isSpinning
+                                          ? Colors.grey.shade600
+                                          : textColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                  child: Center(
-                    child: AnimatedBuilder(
-                      animation: _scaleAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _isSpinning ? 1.0 : _scaleAnimation.value,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 1500),
-                            child: Transform.scale(
-                              scale: _isSpinning ? 1.0 : _scaleAnimation.value,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
+                  SizedBox(height: screenHeight * 0.015), // 0.03에서 0.015로 감소
+                  if (!_isSpinning) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            height:
+                                screenWidth *
+                                0.15, // 폰트 크기(0.04) * 3줄 정도의 여유 공간 확보 (너비 기준)
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenWidth * 0.02,
+                                ),
                                 child: Text(
-                                  _displayText,
+                                  widget.reason,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontFamily: 'Do Hyeon',
-                                    fontSize: _isSpinning
-                                        ? screenWidth * 0.06
-                                        : (_displayText.length > 15
-                                              ? screenWidth *
-                                                    0.065 // 긴 텍스트
-                                              : screenWidth * 0.08), // 짧은 텍스트
-                                    fontWeight: FontWeight.bold,
-                                    color: _isSpinning
-                                        ? Colors.grey.shade600
-                                        : textColor,
+                                    fontSize: screenWidth * 0.04,
+                                    color: Colors.grey.shade700,
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(height: screenHeight * 0.03),
-                if (!_isSpinning) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: SizedBox(
-                            height: screenHeight * 0.075,
-                            child: Center(
-                              child: Text(
-                                widget.reason,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: 'Do Hyeon',
-                                  fontSize: screenWidth * 0.04,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.0225),
-                        // 좋아요/싫어요 버튼
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  await UserPreferenceService.recordFoodSelection(
-                                    foodName: widget.recommended.name,
-                                    category: widget.category,
-                                    liked: true,
-                                  );
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pop();
-                                },
-                                icon: Icon(
-                                  Icons.thumb_up,
-                                  size: screenWidth * 0.04,
-                                ),
-                                label: const Text(
-                                  '좋아요!',
-                                  style: TextStyle(fontFamily: 'Do Hyeon'),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade400,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth * 0.02,
-                                    vertical: screenHeight * 0.015,
+                          SizedBox(
+                            height: screenHeight * 0.012,
+                          ), // 0.0225에서 0.012로 감소
+                          // 좋아요/싫어요 버튼
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    await UserPreferenceService.recordFoodSelection(
+                                      foodName: widget.recommended.name,
+                                      category: widget.category,
+                                      liked: true,
+                                    );
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop();
+                                  },
+                                  icon: Icon(
+                                    Icons.thumb_up,
+                                    size: screenWidth * 0.04,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      screenWidth * 0.025,
+                                  label: const Text(
+                                    '좋아요!',
+                                    style: TextStyle(fontFamily: 'Do Hyeon'),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade400,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.02,
+                                      vertical: screenHeight * 0.015,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        screenWidth * 0.025,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SizedBox(width: screenWidth * 0.02),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  await UserPreferenceService.recordFoodSelection(
-                                    foodName: widget.recommended.name,
-                                    category: widget.category,
-                                    liked: false,
-                                  );
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pop(true);
-                                },
-                                icon: Icon(
-                                  Icons.thumb_down,
-                                  size: screenWidth * 0.04,
-                                ),
-                                label: const Text(
-                                  '다른 걸로',
-                                  style: TextStyle(fontFamily: 'Do Hyeon'),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey.shade400,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth * 0.02,
-                                    vertical: screenHeight * 0.015,
+                              SizedBox(width: screenWidth * 0.02),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    await UserPreferenceService.recordFoodSelection(
+                                      foodName: widget.recommended.name,
+                                      category: widget.category,
+                                      liked: false,
+                                    );
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop(true);
+                                  },
+                                  icon: Icon(
+                                    Icons.thumb_down,
+                                    size: screenWidth * 0.04,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      screenWidth * 0.025,
+                                  label: const Text(
+                                    '다른 걸로',
+                                    style: TextStyle(fontFamily: 'Do Hyeon'),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey.shade400,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.02,
+                                      vertical: screenHeight * 0.015,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        screenWidth * 0.025,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
+                            ],
+                          ),
+                          SizedBox(height: screenHeight * 0.01),
+                          // 근처 음식점 찾기 버튼 (좋아요/다른걸로 버튼과 동일한 너비)
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop('search');
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => RestaurantSearchScreen(
+                                    foodName: widget.recommended.name,
+                                    category: widget.category,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.location_on,
+                              size: screenWidth * 0.04,
                             ),
-                          ],
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        // 근처 음식점 찾기 버튼 (좋아요/다른걸로 버튼과 동일한 너비)
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).pop('search');
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => RestaurantSearchScreen(
-                                  foodName: widget.recommended.name,
-                                  category: widget.category,
+                            label: const Text(
+                              '근처 음식점 찾기',
+                              style: TextStyle(fontFamily: 'Do Hyeon'),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade500,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.02,
+                                vertical: screenHeight * 0.015,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  screenWidth * 0.025,
                                 ),
                               ),
-                            );
-                          },
-                          icon: Icon(
-                            Icons.location_on,
-                            size: screenWidth * 0.04,
-                          ),
-                          label: const Text(
-                            '근처 음식점 찾기',
-                            style: TextStyle(fontFamily: 'Do Hyeon'),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade500,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.02,
-                              vertical: screenHeight * 0.015,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                screenWidth * 0.025,
-                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          // 하단 마진 추가
+                          SizedBox(height: screenHeight * 0.02),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           actions: null,

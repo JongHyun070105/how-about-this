@@ -27,6 +27,7 @@ class ReviewScreen extends ConsumerStatefulWidget {
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   final TextEditingController _foodNameController = TextEditingController();
   bool _hasNavigatedToSelection = false;
+  bool _isGeneratingFoodName = false; // AI 음식명 생성 중 상태
   final ImageLabelingService _imageLabelingService = ImageLabelingService();
 
   @override
@@ -37,6 +38,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   void _initializeScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final selectedFood = widget.food;
       final isDefaultFood = selectedFood.name == AppConstants.defaultFoodName;
       final foodNameToSet = isDefaultFood ? '' : selectedFood.name;
@@ -68,30 +70,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       }
     });
 
-    ref.listen(reviewProvider.select((state) => state.image), (_, next) async {
-      if (next != null) {
-        final labels = await _imageLabelingService.getLabels(next);
-        if (labels.isNotEmpty && context.mounted) {
-          final suggestedFood = labels.first;
-
-          // 다이얼로그 대신 자동 입력 및 스낵바 알림
-          ref.read(reviewProvider.notifier).setFoodName(suggestedFood);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('음식명이 "$suggestedFood"(으)로 자동 입력되었습니다.'),
-              duration: const Duration(seconds: 2),
-              action: SnackBarAction(
-                label: '취소',
-                onPressed: () {
-                  ref.read(reviewProvider.notifier).setFoodName('');
-                },
-              ),
-            ),
-          );
-        }
-      }
-    });
+    // 이미지가 업로드되어도 자동으로 음식명을 생성하지 않음 (사용자가 AI 버튼을 눌러야 함)
 
     ref.listen(reviewProvider.select((state) => state.generatedReviews), (
       previous,
@@ -114,6 +93,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) {
           _hasNavigatedToSelection = false;
+          // 뒤로 가기 시 리뷰 상태 초기화
+          ref.read(reviewProvider.notifier).reset();
         }
       },
       child: Stack(
@@ -127,6 +108,58 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         ],
       ),
     );
+  }
+
+  // AI로 음식명 생성
+  Future<void> _generateFoodNameWithAI() async {
+    final imageFile = ref.read(reviewProvider).image;
+    if (imageFile == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('먼저 음식 이미지를 업로드해주세요.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingFoodName = true;
+    });
+
+    try {
+      final labels = await _imageLabelingService.getLabels(imageFile);
+      if (labels.isNotEmpty && mounted) {
+        final suggestedFood = labels.first;
+        ref.read(reviewProvider.notifier).setFoodName(suggestedFood);
+        _foodNameController.text = suggestedFood;
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('음식 이미지를 인식하지 못했습니다. 직접 입력해주세요.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'AI 음식명 생성 실패: ${e.toString().contains('서버') ? '서버 오류' : '네트워크 오류'}',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingFoodName = false;
+        });
+      }
+    }
   }
 
   void _navigateToRecommendationScreen() {
@@ -309,6 +342,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         autocorrect: false,
         enableSuggestions: false,
         enableInteractiveSelection: false,
+        enabled: !_isGeneratingFoodName,
         onChanged: (text) =>
             ref.read(reviewProvider.notifier).setFoodName(text),
         style: TextStyle(
@@ -318,13 +352,61 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           decoration: TextDecoration.none,
         ),
         decoration: InputDecoration(
-          hintText: '음식명을 입력해주세요',
+          hintText: _isGeneratingFoodName ? 'AI가 음식명 생성 중...' : '음식명을 입력해주세요',
           counterText: "",
           hintStyle: TextStyle(
             fontFamily: 'SCDream',
             fontSize: responsive.inputFontSize() * 0.9,
-            color: Colors.grey[400],
+            color: _isGeneratingFoodName ? Colors.blue[400] : Colors.grey[400],
           ),
+          suffixIcon: _isGeneratingFoodName
+              ? Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.blue[600]!,
+                      ),
+                    ),
+                  ),
+                )
+              : IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue[600]!, Colors.blue[700]!],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          'AI',
+                          style: TextStyle(
+                            fontFamily: 'SCDream',
+                            fontSize: responsive.inputFontSize() * 0.8,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  onPressed: _generateFoodNameWithAI,
+                  tooltip: 'AI로 음식명 생성',
+                ),
           border: const UnderlineInputBorder(borderSide: BorderSide.none),
           focusedBorder: const UnderlineInputBorder(
             borderSide: BorderSide.none,

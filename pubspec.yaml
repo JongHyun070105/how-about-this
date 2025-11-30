@@ -20,7 +20,7 @@ dependencies:
   flutter_riverpod: ^2.5.1
   smooth_page_indicator: ^1.1.0
   flutter_svg: ^2.2.0
-  google_mobile_ads: ^5.1.0
+  google_mobile_ads: ^6.0.0
   confetti: ^0.7.0
   device_info_plus: ^9.1.0 # 디바이스 정보 확인용
   package_info_plus: ^4.2.0 # 패키지 정보 확인용
@@ -32,10 +32,10 @@ dependencies:
   geolocator: ^12.0.0
   permission_handler: ^11.0.0
   url_launcher: ^6.2.5
-  android_intent_plus: ^5.1.0
+  android_intent_plus: ^6.0.0
   dio: ^5.7.0
   json_annotation: ^4.9.0
-  in_app_review: ^2.0.10
+  in_app_review: ^2.0.11
   image: ^4.1.0
 
 dev_dependencies:
