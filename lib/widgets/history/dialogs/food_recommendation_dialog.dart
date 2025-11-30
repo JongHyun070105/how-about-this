@@ -326,7 +326,15 @@ class _FoodRecommendationDialogState
                           SizedBox(height: screenHeight * 0.01),
                           // 근처 음식점 찾기 버튼 (좋아요/다른걸로 버튼과 동일한 너비)
                           ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
+                              // 근처 음식점을 찾는다는 것은 해당 음식을 선택했다는 의미이므로 통계에 반영
+                              await UserPreferenceService.recordFoodSelection(
+                                foodName: widget.recommended.name,
+                                category: widget.category,
+                                liked: true,
+                              );
+
+                              if (!context.mounted) return;
                               Navigator.of(context).pop('search');
                               Navigator.of(context).push(
                                 MaterialPageRoute(

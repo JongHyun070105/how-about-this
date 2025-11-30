@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:review_ai/services/persistent_storage_service.dart';
 
@@ -299,5 +298,36 @@ class UserPreferenceService {
       _reviewPromptLikeCountKey,
       0,
     );
+  }
+
+  /// 요일별 카테고리 선호도 분석
+  /// 반환: Map<int, Map<String, int>> - 요일(1=월요일...7=일요일) -> 카테고리 -> 횟수
+  static Future<Map<int, Map<String, int>>>
+  analyzeDayOfWeekPreferences() async {
+    final history = await getFoodSelectionHistory();
+
+    // 좋아요를 누른 항목만 필터링
+    final likedHistory = history.where((s) => s.liked).toList();
+
+    if (likedHistory.isEmpty) {
+      return {};
+    }
+
+    // 요일별로 그룹화 (1=월요일, 7=일요일)
+    final dayOfWeekStats = <int, Map<String, int>>{};
+
+    for (final selection in likedHistory) {
+      final weekday = selection.selectedAt.weekday; // 1-7
+      final category = selection.category;
+
+      // 상관없음 카테고리는 제외
+      if (category == '상관없음') continue;
+
+      dayOfWeekStats.putIfAbsent(weekday, () => <String, int>{});
+      dayOfWeekStats[weekday]![category] =
+          (dayOfWeekStats[weekday]![category] ?? 0) + 1;
+    }
+
+    return dayOfWeekStats;
   }
 }
