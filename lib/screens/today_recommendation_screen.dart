@@ -463,9 +463,16 @@ class _TodayRecommendationScreenState
     required List<FoodRecommendation> foods,
     required Color color,
   }) {
-    final recentFoods = <String>[];
-
     void openDialog() async {
+      // 최근 7일간 먹은 음식 가져오기
+      final history = await UserPreferenceService.getFoodSelectionHistory();
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      final recentFoods = history
+          .where((s) => s.selectedAt.isAfter(sevenDaysAgo))
+          .map((s) => s.foodName)
+          .toSet() // 중복 제거
+          .toList();
+
       final analysis = await UserPreferenceService.analyzeUserPreferences();
       final resultTuple = RecommendationService.pickSmartFood(
         foods,

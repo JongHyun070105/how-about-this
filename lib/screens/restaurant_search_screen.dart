@@ -563,18 +563,7 @@ class _RestaurantSearchScreenState
         return;
     }
 
-    // Android에서만 작동
-    if (Theme.of(context).platform != TargetPlatform.android) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('이 기능은 Android에서만 지원됩니다'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
+    // Android와 iOS 모두 지원
 
     // 여러 URL Scheme을 순차적으로 시도
     bool launchSuccess = false;
@@ -596,12 +585,15 @@ class _RestaurantSearchScreenState
 
     // 모든 scheme이 실패한 경우
     if (!launchSuccess && mounted) {
+      final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+      final storeName = isIOS ? 'App Store' : 'Play Store';
+
       final shouldOpenStore = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('$appDisplayName 앱'),
           content: Text(
-            '$appDisplayName 앱을 실행할 수 없습니다.\n\nPlay Store에서 앱을 설치 또는 업데이트하시겠습니까?',
+            '$appDisplayName 앱을 실행할 수 없습니다.\n\n$storeName에서 앱을 설치 또는 업데이트하시겠습니까?',
           ),
           actions: [
             TextButton(
@@ -610,23 +602,58 @@ class _RestaurantSearchScreenState
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Play Store 열기'),
+              child: Text('$storeName 열기'),
             ),
           ],
         ),
       );
 
       if (shouldOpenStore == true) {
-        final storeUri = Uri.parse('market://details?id=$packageName');
+        // 플랫폼별 스토어 URL
+        String storeUrl;
+        if (Theme.of(context).platform == TargetPlatform.iOS) {
+          // iOS App Store - 각 앱의 정확한 App ID
+          // 배민: https://apps.apple.com/kr/app/배달의민족-무료배달-배민클럽/id378084485
+          // 요기요: https://apps.apple.com/kr/app/배달요기요-기다림-없는-맛집-배달앱/id543831532
+          // 쿠팡이츠: https://apps.apple.com/kr/app/쿠팡이츠-와우회원-무료배달/id1445504255
+          String appStoreId;
+          switch (appName) {
+            case 'baemin':
+              appStoreId = '378084485';
+              break;
+            case 'yogiyo':
+              appStoreId = '543831532';
+              break;
+            case 'coupang_eats':
+              appStoreId = '1445504255';
+              break;
+            default:
+              return;
+          }
+          storeUrl = 'https://apps.apple.com/kr/app/id$appStoreId';
+        } else {
+          // Android Play Store
+          storeUrl = 'market://details?id=$packageName';
+        }
+
         try {
-          await launchUrl(storeUri, mode: LaunchMode.externalApplication);
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Play Store를 열 수 없습니다'),
-              backgroundColor: Colors.red,
-            ),
+          await launchUrl(
+            Uri.parse(storeUrl),
+            mode: LaunchMode.externalApplication,
           );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  Theme.of(context).platform == TargetPlatform.iOS
+                      ? 'App Store를 열 수 없습니다'
+                      : 'Play Store를 열 수 없습니다',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     }

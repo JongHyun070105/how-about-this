@@ -73,9 +73,12 @@ class ApiProxyService {
             statusCode: response.statusCode,
           );
         } catch (e) {
-          // JSON 파싱 실패 시 응답 본문을 그대로 사용
+          // JSON 파싱 실패 시 로그만 남기고 사용자에게는 일반 메시지
+          debugPrint(
+            'API Error Response (non-JSON): ${responseBody.length > 100 ? responseBody.substring(0, 100) : responseBody}',
+          );
           throw GeminiApiException(
-            '서버 응답 오류: ${responseBody.length > 100 ? responseBody.substring(0, 100) : responseBody}',
+            'API 서버 응답 오류가 발생했습니다.',
             statusCode: response.statusCode,
           );
         }

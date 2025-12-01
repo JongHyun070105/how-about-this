@@ -15,8 +15,10 @@ class AppUpdateService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
-      // 2. Fetch latest version from the server
-      final response = await http.get(Uri.parse(_updateUrl));
+      // 2. Fetch latest version from the server (with timeout)
+      final response = await http
+          .get(Uri.parse(_updateUrl))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);

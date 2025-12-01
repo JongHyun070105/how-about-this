@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -102,13 +103,15 @@ class AuthService {
       } else {
         try {
           final errorData = jsonDecode(response.body);
-          throw AuthException(
-            '토큰 발급 실패: ${errorData['message'] ?? 'Unknown error'} (Status: ${response.statusCode})',
+          debugPrint(
+            'Token request failed: ${errorData['message']} (Status: ${response.statusCode})',
           );
+          throw AuthException('인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
         } catch (e) {
-          throw AuthException(
-            '토큰 발급 실패: 서버 응답 오류 (Status: ${response.statusCode}). Response: ${response.body.substring(0, 100)}',
+          debugPrint(
+            'Token request failed with status ${response.statusCode}. Response: ${response.body.substring(0, min(100, response.body.length))}',
           );
+          throw AuthException('인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
         }
       }
     } catch (e) {
