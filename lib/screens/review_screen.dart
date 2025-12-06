@@ -28,6 +28,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   final TextEditingController _foodNameController = TextEditingController();
   bool _hasNavigatedToSelection = false;
   bool _isGeneratingFoodName = false; // AI 음식명 생성 중 상태
+  bool _isUpdatingFromProvider = false; // Provider로부터 업데이트 중인지 추적 (순환 업데이트 방지)
   final ImageLabelingService _imageLabelingService = ImageLabelingService();
 
   @override
@@ -64,9 +65,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final reviewState = ref.watch(reviewProvider);
     final isLoading = reviewState.isLoading;
 
+    // Provider 상태 변경 감지 - 순환 업데이트 방지를 위해 플래그 사용
     ref.listen(reviewProvider.select((state) => state.foodName), (_, next) {
       if (_foodNameController.text != next) {
+        _isUpdatingFromProvider = true; // 플래그 설정
         _foodNameController.text = next;
+        _isUpdatingFromProvider = false; // 플래그 해제
       }
     });
 
@@ -132,8 +136,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       final labels = await _imageLabelingService.getLabels(imageFile);
       if (labels.isNotEmpty && mounted) {
         final suggestedFood = labels.first;
+        // AI 생성 시에도 순환 업데이트 방지 메커니즘 적용
+        _isUpdatingFromProvider = true;
         ref.read(reviewProvider.notifier).setFoodName(suggestedFood);
         _foodNameController.text = suggestedFood;
+        _isUpdatingFromProvider = false;
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -343,8 +350,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         enableSuggestions: false,
         enableInteractiveSelection: false,
         enabled: !_isGeneratingFoodName,
-        onChanged: (text) =>
-            ref.read(reviewProvider.notifier).setFoodName(text),
+        onChanged: (text) {
+          // Provider로부터의 업데이트가 아닐 때만 Provider 상태 업데이트 (순환 업데이트 방지)
+          if (!_isUpdatingFromProvider) {
+            ref.read(reviewProvider.notifier).setFoodName(text);
+          }
+        },
         style: TextStyle(
           fontFamily: 'SCDream',
           fontSize: responsive.inputFontSize(),
