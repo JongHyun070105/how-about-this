@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+// dart:io는 File 사용 제거로 인해 불필요
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mockito/annotations.dart';
@@ -117,8 +117,8 @@ void main() {
         ),
       ).thenAnswer((_) async => http.Response(responseBody, 200));
 
-      // Mock File
-      final file = File('test_image.jpg');
+      // Note: File 객체 생성 테스트는 실제 파일 I/O가 필요하여 생략
+      // final file = File('test_image.jpg');
 
       // Act
       // Note: Since we cannot easily mock File readAsBytes in this setup without more complex mocking,

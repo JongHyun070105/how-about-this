@@ -12,12 +12,13 @@ import 'review_viewmodel_test.mocks.dart';
 @GenerateMocks([GenerateReviewUseCase, AdService])
 void main() {
   late MockGenerateReviewUseCase mockGenerateReviewUseCase;
-  late MockAdService mockAdService;
+  // mockAdService는 현재 테스트에서 사용되지 않음 - 필요 시 활성화
+  // late MockAdService mockAdService;
   late ProviderContainer container;
 
   setUp(() {
     mockGenerateReviewUseCase = MockGenerateReviewUseCase();
-    mockAdService = MockAdService();
+    // mockAdService = MockAdService();
 
     container = ProviderContainer(
       overrides: [

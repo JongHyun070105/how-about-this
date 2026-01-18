@@ -301,7 +301,7 @@ class UserPreferenceService {
   }
 
   /// 요일별 카테고리 선호도 분석
-  /// 반환: Map<int, Map<String, int>> - 요일(1=월요일...7=일요일) -> 카테고리 -> 횟수
+  /// 반환: `Map<int, Map<String, int>>` - 요일(1=월요일...7=일요일) -> 카테고리 -> 횟수
   static Future<Map<int, Map<String, int>>>
   analyzeDayOfWeekPreferences() async {
     final history = await getFoodSelectionHistory();

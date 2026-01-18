@@ -608,10 +608,11 @@ class _RestaurantSearchScreenState
         ),
       );
 
-      if (shouldOpenStore == true) {
+      if (shouldOpenStore == true && mounted) {
         // 플랫폼별 스토어 URL
         String storeUrl;
-        if (Theme.of(context).platform == TargetPlatform.iOS) {
+        final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+        if (isIOS) {
           // iOS App Store - 각 앱의 정확한 App ID
           // 배민: https://apps.apple.com/kr/app/배달의민족-무료배달-배민클럽/id378084485
           // 요기요: https://apps.apple.com/kr/app/배달요기요-기다림-없는-맛집-배달앱/id543831532
