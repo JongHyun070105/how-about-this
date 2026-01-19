@@ -4,21 +4,18 @@ import 'package:mockito/annotations.dart';
 import 'package:review_ai/domain/usecases/generate_review_usecase.dart';
 import 'package:review_ai/models/review_state.dart';
 import 'package:review_ai/presentation/providers/dependency_injection.dart';
-import 'package:review_ai/services/ad_service.dart';
+
 import 'package:review_ai/viewmodels/review_viewmodel.dart';
 
 import 'review_viewmodel_test.mocks.dart';
 
-@GenerateMocks([GenerateReviewUseCase, AdService])
+@GenerateMocks([GenerateReviewUseCase])
 void main() {
   late MockGenerateReviewUseCase mockGenerateReviewUseCase;
-  // mockAdService는 현재 테스트에서 사용되지 않음 - 필요 시 활성화
-  // late MockAdService mockAdService;
   late ProviderContainer container;
 
   setUp(() {
     mockGenerateReviewUseCase = MockGenerateReviewUseCase();
-    // mockAdService = MockAdService();
 
     container = ProviderContainer(
       overrides: [
