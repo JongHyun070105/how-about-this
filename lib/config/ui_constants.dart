@@ -39,5 +39,3 @@ class UiConstants {
   static const int imageQuality = 90;
   static const double maxImageDimension = 1200.0;
 }
-
-

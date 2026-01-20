@@ -1,6 +1,5 @@
 import 'dart:io';
 
-
 abstract class ReviewRepository {
   Future<List<String>> generateReviews({
     required String foodName,

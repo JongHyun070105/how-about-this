@@ -31,5 +31,3 @@ class DeeplinkConstants {
   static const String coupangEatsScheme = 'coupangeats://';
   static const String kakaoMapScheme = 'kakaomap://';
 }
-
-

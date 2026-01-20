@@ -78,7 +78,6 @@ void showPhotoPermissionDialog(BuildContext context) {
   );
 }
 
-
 void showFeatureRestrictedDialog(
   BuildContext context,
   String featureName,
