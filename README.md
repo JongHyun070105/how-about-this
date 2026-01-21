@@ -47,7 +47,7 @@
 
 ### AI & External APIs
 - **AI 모델**: Google Gemini API (gemini-2.5-flash-lite)
-- **맛집 검색**: 카카오 로컬 API
+- **맛집 검색**: 카카오맵 API
 - **지도 & 길찾기**: 카카오맵 API
 - **날씨**: OpenWeatherMap API
 
