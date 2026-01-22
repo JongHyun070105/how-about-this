@@ -65,7 +65,7 @@
 
 - Flutter SDK 설치 ([공식 문서](https://flutter.dev/docs/get-started/install))
 - Android Studio 또는 VS Code (Flutter/Dart 플러그인 설치)
-- `.env` 파일 설정 (프로젝트 루트에 `.env` 파일을 생성하고 `GEMINI_API_KEY` 및 `APP_ENVIRONMENT` 설정)
+- `.env` 파일 설정 (프로젝트 루트에 `.env` 파일을 생성하고 `GEMINI_API_KEY` 및 `KAKAO_API_KEY`, `OPEN_WEATHER_MAP_API_KEY`, `APP_ENVIRONMENT` 설정)
 
 ### 2. 의존성 설치
 
