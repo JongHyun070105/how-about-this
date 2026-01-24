@@ -103,7 +103,3 @@ flutter run
 ## 라이선스
 
 MIT License
-
-## 문의
-
-궁금한 점이 있으시면 다음 이메일로 문의해주세요: [bobi09361@gmail.com]
