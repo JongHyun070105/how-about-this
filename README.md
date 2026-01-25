@@ -75,7 +75,7 @@
 flutter pub get
 ```
 
-### 3. iOS Pod 설치 (iOS 개발 시)
+### 3. iOS Pod 설치
 
 iOS 개발 환경에서는 추가적으로 CocoaPods 의존성을 설치해야 합니다.
 
