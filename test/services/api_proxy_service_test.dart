@@ -28,13 +28,16 @@ void main() {
 
   group('ApiProxyService Tests', () {
     test('generateReviews returns list of reviews on success', () async {
-      // Arrange
+      // Arrange - ApiProxyService expects JSON array format in response text
       final responseBody = jsonEncode({
         'candidates': [
           {
             'content': {
               'parts': [
-                {'text': '맛있어요!\n추천합니다.\n최고예요!'},
+                {
+                  'text':
+                      '["Great taste!", "Delicious food!", "Highly recommended!"]',
+                },
               ],
             },
           },
@@ -56,13 +59,13 @@ void main() {
         tasteRating: 5.0,
         portionRating: 5.0,
         priceRating: 5.0,
-        reviewStyle: '친절한', // 필수 파라미터 추가
+        reviewStyle: 'friendly',
       );
 
       // Assert
       expect(reviews, isNotEmpty);
-      expect(reviews.length, 1);
-      expect(reviews.first, contains('맛있어요!'));
+      expect(reviews.length, 3);
+      expect(reviews.first, 'Great taste!');
     });
 
     test('generateReviews throws ApiException on 500 error', () async {
@@ -88,7 +91,7 @@ void main() {
           tasteRating: 5.0,
           portionRating: 5.0,
           priceRating: 5.0,
-          reviewStyle: '친절한', // 필수 파라미터 추가
+          reviewStyle: 'friendly',
         ),
         throwsA(isA<ApiException>()),
       );
