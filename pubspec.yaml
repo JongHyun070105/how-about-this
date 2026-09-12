@@ -1,7 +1,7 @@
 name: review_ai
 description: "AI Food Review App"
 publish_to: "none"
-version: 1.14.0+122
+version: 1.15.0+123
 environment:
   sdk: ^3.9.0
 
@@ -80,6 +80,9 @@ flutter:
           weight: 400
         - asset: assets/fonts/SCDream5.otf
           weight: 500
+    - family: Do Hyeon
+      fonts:
+        - asset: assets/fonts/BMDOHYEON.otf
 
 flutter_launcher_icons:
   android: true

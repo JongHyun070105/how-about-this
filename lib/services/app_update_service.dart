@@ -8,7 +8,7 @@ import 'package:review_ai/core/utils/logger_service.dart';
 
 class AppUpdateService {
   static const String _updateUrl =
-      'https://gist.github.com/JongHyun070105/ba8200acae9b3375efe284ce43b0e519/raw/467c41ced067c0ccd2ec32a7e0a27aa40c4ff1ae/latest_version.json';
+      'https://gist.githubusercontent.com/JongHyun070105/ba8200acae9b3375efe284ce43b0e519/raw/latest_version.json';
   static const Duration _httpTimeout = Duration(seconds: 5);
 
   final http.Client _client;
@@ -81,23 +81,31 @@ class AppUpdateService {
   /// version1이 version2보다 크면 true를 반환합니다.
   bool isVersionGreater(String version1, String version2) {
     int safeParsePart(String part) {
-      // 문자열에서 숫자 부분만 필터링 (예: "2-beta" -> "2", "2+1" -> "21" 또는 "2")
-      // 단순화를 위해 첫 숫자 시퀀스만 가져오거나 모든 비숫자를 제거합니다.
       final cleanDigits = part.replaceAll(RegExp(r'[^0-9]'), '');
       return int.tryParse(cleanDigits) ?? 0;
     }
 
-    final v1 = version1.split('.').map(safeParsePart).toList();
-    final v2 = version2.split('.').map(safeParsePart).toList();
+    final v1 = version1
+        .replaceAll('+', '.')
+        .replaceAll('-', '.')
+        .split('.')
+        .map(safeParsePart)
+        .toList();
+    final v2 = version2
+        .replaceAll('+', '.')
+        .replaceAll('-', '.')
+        .split('.')
+        .map(safeParsePart)
+        .toList();
 
     final len = v1.length > v2.length ? v1.length : v2.length;
 
     for (int i = 0; i < len; i++) {
-      final num1 = i < v1.length ? v1[i] : 0;
-      final num2 = i < v2.length ? v2[i] : 0;
+      final part1 = i < v1.length ? v1[i] : 0;
+      final part2 = i < v2.length ? v2[i] : 0;
 
-      if (num1 > num2) return true;
-      if (num1 < num2) return false;
+      if (part1 > part2) return true;
+      if (part1 < part2) return false;
     }
 
     return false; // 버전이 동일함

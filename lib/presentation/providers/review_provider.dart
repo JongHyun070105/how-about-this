@@ -158,16 +158,21 @@ class ReviewHistoryNotifier extends StateNotifier<List<ReviewHistoryEntry>> {
         return;
       }
 
-      final entries = historyJson
-          .map(
-            (data) => ReviewHistoryEntry.fromJson(data as Map<String, dynamic>),
-          )
-          .toList();
+      final List<ReviewHistoryEntry> entries = [];
+      for (final data in historyJson) {
+        try {
+          if (data is Map<String, dynamic>) {
+            entries.add(ReviewHistoryEntry.fromJson(data));
+          }
+        } catch (itemError) {
+          LoggerService.w('손상된 리뷰 엔트리 건너뜀: $itemError');
+        }
+      }
       LoggerService.i('📂 리뷰 히스토리 로드 완료: ${entries.length}개');
       state = entries;
-    } catch (e) {
-      LoggerService.e('리뷰 히스토리 로드 오류: $e');
-      await clearHistory();
+    } catch (e, st) {
+      LoggerService.e('리뷰 히스토리 로드 오류 (데이터 보존): $e', e, st);
+      state = [];
     }
   }
 

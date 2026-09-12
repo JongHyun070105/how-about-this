@@ -239,9 +239,7 @@ class ImageUploadSection extends ConsumerWidget {
         isError: true,
       );
     } finally {
-      if (context.mounted) {
-        ref.read(isPickingImageProvider.notifier).state = false;
-      }
+      ref.read(isPickingImageProvider.notifier).state = false;
     }
   }
 }

@@ -13,6 +13,8 @@
         android:label="이거 먹자!"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
@@ -79,7 +81,7 @@
         <!-- 쿠팡이츠 -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="coupongeats" />
+            <data android:scheme="coupangeats" />
         </intent>
         <package android:name="com.coupang.mobile.eats" />
         

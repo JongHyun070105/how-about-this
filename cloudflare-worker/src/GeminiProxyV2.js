@@ -30,7 +30,7 @@ export class GeminiProxyV2 {
         return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
       }
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:${endpoint}?key=${apiKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:${endpoint}?key=${apiKey}`;
       console.log(`Calling Gemini API endpoint: ${endpoint}`);
 
       const response = await fetch(geminiUrl, {

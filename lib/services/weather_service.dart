@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:review_ai/config/api_config.dart';
 import 'package:review_ai/core/utils/logger_service.dart';
+import 'package:review_ai/services/auth_service.dart';
 
 enum WeatherCondition {
   clear,
@@ -53,8 +54,20 @@ class WeatherService {
       // Cloudflare Worker 프록시를 통해 날씨 정보 조회 (ApiConfig.proxyUrl 활용)
       final url = Uri.parse('${ApiConfig.proxyUrl}/weather?lat=$lat&lon=$lng');
 
+      String? token;
+      try {
+        token = await AuthService.getValidAccessToken();
+      } catch (e) {
+        LoggerService.w('WeatherService: 토큰 획득 실패: $e');
+      }
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+
       final response = await _client
-          .get(url)
+          .get(url, headers: headers)
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
