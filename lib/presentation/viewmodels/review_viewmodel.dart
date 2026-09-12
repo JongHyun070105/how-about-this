@@ -52,7 +52,11 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
       if (imageFile != null) {
         // 이미지 검증 진행
         final isValid = await validateImage(imageFile);
-        if (!isValid) {
+        final currentFoodName = _ref.read(reviewProvider).foodName.trim();
+        final hasValidFoodName =
+            currentFoodName.isNotEmpty && currentFoodName != 'NOT_FOOD';
+
+        if (!isValid && !hasValidFoodName) {
           if (!context.mounted) return;
           showAppDialog(
             context,
