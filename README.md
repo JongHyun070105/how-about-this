@@ -1,4 +1,4 @@
-# 이거어때?
+# 이거 먹자!
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/JongHyun070105/how-about-this/aquarium-output/aquarium-github-dark.svg?v=1.3.0">
@@ -8,7 +8,11 @@
 
 ## 개요
 
-이거어때?는 이미지, 음식명, 별점을 입력받아 Gemini AI(gemini-3.5-flash-lite)를 통해 음식 리뷰를 3개 생성하고, 사용자가 선택하여 복사할 수 있는 Flutter 애플리케이션입니다. 이 앱은 사용자에게 편리하고 다양한 리뷰 옵션을 제공하여 음식 리뷰 작성 과정을 간소화합니다.
+이거 먹자!는 이미지, 음식명, 별점을 입력받아 Gemini AI(gemini-3.5-flash-lite)를 통해 음식 리뷰를 3개 생성하고, 사용자가 선택하여 복사할 수 있는 Flutter 애플리케이션입니다. 이 앱은 사용자에게 편리하고 다양한 리뷰 옵션을 제공하여 음식 리뷰 작성 과정을 간소화합니다.
+
+<p align="center">
+  <img src="assets/images/promotions/store_promo_panorama_v2_web.png" alt="이거 먹자! 앱 스크린샷" width="100%">
+</p>
 
 ## 주요 기능
 
