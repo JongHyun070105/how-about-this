@@ -159,10 +159,9 @@ def main():
     print("\n--- Generated English Release Notes ---")
     print(en_notes)
 
-    # Write files for Fastlane
+    # Write files for Fastlane (Google Play Console primary registered locale: ko-KR)
     targets = [
         ("ko-KR", ko_notes),
-        ("en-US", en_notes)
     ]
 
     for locale, content in targets:

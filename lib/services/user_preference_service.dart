@@ -124,6 +124,7 @@ class UserPreferenceService {
     if (!liked) {
       await _addDislikedFood(foodName);
     } else {
+      await removeFromDislikedFoods(foodName);
       final int count =
           await _storageService.getValue<int>(
             _userPrefsFile,

@@ -249,5 +249,25 @@ void main() {
         equals(0),
       );
     });
+
+    test('이전에 싫어하는 음식으로 등록되었던 음식을 좋아요 선택 시 싫어하는 음식 목록에서 제거된다', () async {
+      // 1. 싫어하는 음식으로 등록 (liked: false)
+      await UserPreferenceService.recordFoodSelection(
+        foodName: '마라탕',
+        category: '중식',
+        liked: false,
+      );
+      var disliked = await UserPreferenceService.getDislikedFoods();
+      expect(disliked, contains('마라탕'));
+
+      // 2. 이후 해당 음식을 좋아요 선택 (liked: true)
+      await UserPreferenceService.recordFoodSelection(
+        foodName: '마라탕',
+        category: '중식',
+        liked: true,
+      );
+      disliked = await UserPreferenceService.getDislikedFoods();
+      expect(disliked, isNot(contains('마라탕')));
+    });
   });
 }
