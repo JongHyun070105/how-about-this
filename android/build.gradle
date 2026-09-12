@@ -3,6 +3,16 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.all {
+        resolutionStrategy {
+            eachDependency { DependencyResolveDetails details ->
+                if (details.requested.group == 'com.github.scottyab' && details.requested.name == 'rootbeer') {
+                    details.useTarget 'com.scottyab:rootbeer-lib:0.1.1'
+                    details.because '16 KB page size support for Android 15+'
+                }
+            }
+        }
+    }
 }
 
 rootProject.buildDir = file('../build')
