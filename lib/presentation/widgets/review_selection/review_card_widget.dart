@@ -83,54 +83,9 @@ class ReviewCardWidget extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          _buildSelectionBadge(activeColor),
           _buildEditButton(context),
         ],
       ),
-    );
-  }
-
-  Widget _buildSelectionBadge(Color activeColor) {
-    if (isSelected) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: activeColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_rounded, size: 14, color: Colors.white),
-            SizedBox(width: 4),
-            Text(
-              '선택됨',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Do Hyeon',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.touch_app_outlined, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 3),
-        Text(
-          '탭하여 선택',
-          style: TextStyle(
-            color: Colors.grey.shade500,
-            fontSize: 12,
-            fontFamily: 'Do Hyeon',
-          ),
-        ),
-      ],
     );
   }
 
