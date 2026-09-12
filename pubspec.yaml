@@ -80,6 +80,9 @@ flutter:
           weight: 400
         - asset: assets/fonts/SCDream5.otf
           weight: 500
+    - family: Do Hyeon
+      fonts:
+        - asset: assets/fonts/BMDOHYEON.otf
 
 flutter_launcher_icons:
   android: true

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:review_ai/presentation/screens/security_block_screen.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:review_ai/core/utils/logger_service.dart';
 // Added url_launcher import
 import 'app_constants.dart';
@@ -105,9 +106,6 @@ class SecurityConfig {
 
   static Future<bool> detectEmulator() async {
     if (!_canUsePlatformChannels) {
-      // 단위 테스트와 초기화 전 경로는 Flutter binding 없이 실행될 수 있다.
-      // 감지기 사용 불가 상태는 실제 보안 위협이 아니므로 false-positive
-      // 에러 대신 "감지되지 않음"으로 처리한다.
       LoggerService.d(
         'Emulator detection skipped: Flutter binding is not initialized.',
       );
@@ -115,8 +113,15 @@ class SecurityConfig {
     }
 
     try {
-      // developerMode는 Android의 경우 개발자 모드나 에뮬레이터 등을 감지하는 데 활용됩니다.
-      return await FlutterJailbreakDetection.developerMode;
+      final deviceInfo = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return !androidInfo.isPhysicalDevice;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return !iosInfo.isPhysicalDevice;
+      }
+      return false;
     } on MissingPluginException catch (e) {
       LoggerService.w('Emulator detection unavailable: ${e.message ?? e}');
       return false;

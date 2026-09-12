@@ -12,6 +12,17 @@ export function jsonResponse(data, status = 200, headers = {}) {
   });
 }
 
+function timingSafeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 export async function generateJWT(payload, secret, expiresIn) {
   const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
@@ -29,7 +40,7 @@ export async function verifyJWT(token, secret) {
   const [encodedHeader, encodedPayload, signature] = parts;
   const message = `${encodedHeader}.${encodedPayload}`;
   const expectedSignature = await sign(message, secret);
-  if (signature !== expectedSignature) throw new Error("Invalid signature");
+  if (!timingSafeEqual(signature, expectedSignature)) throw new Error("Invalid signature");
   const payload = JSON.parse(base64urlDecode(encodedPayload));
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp < now) throw new Error("Token expired");
