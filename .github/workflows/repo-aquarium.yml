@@ -1,0 +1,25 @@
+name: Repo Aquarium
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: repo-aquarium
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: JongHyun070105/repo-aquarium@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          themes: coral-day,deep-ocean,github-dark,sunset-lagoon,arctic-ice,neon-cyber
+          creatures: contributors,jellyfish,crab,turtle,seahorse,octopus,ray,pufferfish,starfish
+          ci-workflow: cicd.yml

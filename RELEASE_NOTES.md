@@ -1,7 +1,7 @@
-# 🚀 이거 먹자! (ReviewAI) v1.8.2 출시 노트 (Release Notes)
+# 🚀 이거 먹자! (ReviewAI) v1.15.0 출시 노트 (Release Notes)
 
 ## 📌 출시 정보
-- **버전**: `v1.8.2 (빌드 111)`
+- **버전**: `v1.15.0 (빌드 123)`
 - **출시일**: 2026년 9월 12일
 - **대상 플랫폼**: Android (Google Play Store) & iOS
 

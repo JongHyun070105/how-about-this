@@ -1,5 +1,114 @@
 # Changelog
 
+## [1.14.0](https://github.com/JongHyun070105/how-about-this/compare/v1.13.0...v1.14.0) (2026-07-12)
+
+
+### Features
+
+* add repository aquarium ([#98](https://github.com/JongHyun070105/how-about-this/issues/98)) ([82ca8e2](https://github.com/JongHyun070105/how-about-this/commit/82ca8e2ac8512360dacb09edeaf88aa0dfa9e736))
+
+## [1.13.0](https://github.com/JongHyun070105/how-about-this/compare/v1.12.4...v1.13.0) (2026-06-16)
+
+
+### Features
+
+* **permission:** 메인 진입 후 위치/알림 권한 요청하도록 변경 ([212487c](https://github.com/JongHyun070105/how-about-this/commit/212487cb28222cf36f4838187f1d0d8e16f681b2))
+* **permission:** 메인 진입 후 위치/알림 권한 요청하도록 변경 ([39c47d8](https://github.com/JongHyun070105/how-about-this/commit/39c47d87e17c3f6388dbcd833bdf34a655463384))
+* show permissions on main screen after onboarding ([5c2a6d9](https://github.com/JongHyun070105/how-about-this/commit/5c2a6d9e814cb5f6e815b0b50cb2cf9e875d6ce7))
+
+
+### Bug Fixes
+
+* **test:** weather_viewmodel tests align with error-state handling ([a46f52f](https://github.com/JongHyun070105/how-about-this/commit/a46f52fad1bda05f76f4d901c125a33e71a28d4f))
+
+## [1.12.4](https://github.com/JongHyun070105/how-about-this/compare/v1.12.3...v1.12.4) (2026-06-08)
+
+
+### Bug Fixes
+
+* handle wrapped review JSON responses ([9b26567](https://github.com/JongHyun070105/how-about-this/commit/9b2656719a389fc172242b78d0bb44bb602a8794))
+* handle wrapped review JSON responses ([d7ee84b](https://github.com/JongHyun070105/how-about-this/commit/d7ee84b96aaef6e2824115a7b1867e5c42b918cf))
+* tolerate trailing commas in Gemini JSON ([e216e25](https://github.com/JongHyun070105/how-about-this/commit/e216e251af6fd128dcfdf3ca0335a3883a405fa4))
+* tolerate trailing commas in Gemini JSON ([38bf934](https://github.com/JongHyun070105/how-about-this/commit/38bf934c60305713f23c2ab2281d4cf91124e6c5))
+
+## [1.12.4](https://github.com/JongHyun070105/how-about-this/compare/v1.12.3...v1.12.4) (2026-06-06)
+
+
+### Bug Fixes
+
+* tolerate trailing commas in Gemini JSON ([e216e25](https://github.com/JongHyun070105/how-about-this/commit/e216e251af6fd128dcfdf3ca0335a3883a405fa4))
+* tolerate trailing commas in Gemini JSON ([38bf934](https://github.com/JongHyun070105/how-about-this/commit/38bf934c60305713f23c2ab2281d4cf91124e6c5))
+
+## [1.12.3](https://github.com/JongHyun070105/how-about-this/compare/v1.12.2...v1.12.3) (2026-06-04)
+
+
+### Bug Fixes
+
+* classify config fallback as non-error ([8104f15](https://github.com/JongHyun070105/how-about-this/commit/8104f15b6e6ca3e59a5f07dab17ab16cbc13bf4b))
+* classify config fallback as non-error ([a695922](https://github.com/JongHyun070105/how-about-this/commit/a6959220ec01b5868d15ef4719ede851df1ab827))
+* handle Gemini markdown fence variants ([7538f79](https://github.com/JongHyun070105/how-about-this/commit/7538f7949db6f3194fab689803aba1e025102c89))
+* handle Gemini markdown fence variants ([38ca9ff](https://github.com/JongHyun070105/how-about-this/commit/38ca9ff8dcdb9695dc941fd88a256ed8cb5c4797))
+* parse Gemini JSON wrapped in prose ([c253960](https://github.com/JongHyun070105/how-about-this/commit/c2539604df501419441a8264e03f2129d2c66028))
+* parse Gemini JSON wrapped in prose ([3e9ee99](https://github.com/JongHyun070105/how-about-this/commit/3e9ee99993bca7fbb05ca3dd47c5a3798666724e))
+
+## [1.12.2](https://github.com/JongHyun070105/how-about-this/compare/v1.12.1...v1.12.2) (2026-06-01)
+
+
+### Bug Fixes
+
+* satisfy CI QA formatting ([9e2d357](https://github.com/JongHyun070105/how-about-this/commit/9e2d357d41242f2da78d14f537ac6579438a7e9a))
+* satisfy CI QA formatting ([028074a](https://github.com/JongHyun070105/how-about-this/commit/028074a8b4ac183b580919f3cfb002ce6e0a140b))
+
+## [1.12.1](https://github.com/JongHyun070105/how-about-this/compare/v1.12.0...v1.12.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* cicd.yml Firebase App Distribution 배포 CLI 전환 ([2982c5a](https://github.com/JongHyun070105/how-about-this/commit/2982c5a7e7acddf234e914d1697a13a8cca5ed93))
+
+## [1.12.0](https://github.com/JongHyun070105/how-about-this/compare/v1.11.0...v1.12.0) (2026-05-17)
+
+
+### Features
+
+* test 파일 추가 및 기타 작업 진행 ([9bb3ec2](https://github.com/JongHyun070105/how-about-this/commit/9bb3ec2592a573caf79a8f1689eeeb7bed673919))
+* test 파일 추가 및 기타 작업 진행 ([3d13d54](https://github.com/JongHyun070105/how-about-this/commit/3d13d54d7811d3c17039ab7d13373f2bee4ff4fe))
+
+## [1.11.0](https://github.com/JongHyun070105/how-about-this/compare/v1.10.0...v1.11.0) (2026-05-11)
+
+
+### Features
+
+* Cloudflare Worker 리팩토링 ([4dec854](https://github.com/JongHyun070105/how-about-this/commit/4dec85438f7ecd9dc0f36f2de73c1e3d08f05297))
+* Cloudflare Worker 리팩토링 ([ae06a2d](https://github.com/JongHyun070105/how-about-this/commit/ae06a2d253d3ed0d3bdab2ece8c3ce3607d17860))
+
+## [1.10.0](https://github.com/JongHyun070105/how-about-this/compare/v1.9.0...v1.10.0) (2026-05-02)
+
+
+### Features
+
+* API 캐싱 적용 ([c951b87](https://github.com/JongHyun070105/how-about-this/commit/c951b8730bf8a0ae954d2b4286c513097e300021))
+* API 캐싱 적용 ([298b4fb](https://github.com/JongHyun070105/how-about-this/commit/298b4fba019563728841d86e0f57bec54650b25c))
+* 보안 차단 화면 구현 및 스플래시 화면 Race Condition 수정 ([86d5248](https://github.com/JongHyun070105/how-about-this/commit/86d5248dd677ff476ffe53c46d2adfbc72fcca85))
+* 보안 차단 화면 구현 및 스플래시 화면 Race Condition 수정 ([615dbf1](https://github.com/JongHyun070105/how-about-this/commit/615dbf16335af679e011d9e952f5497d2575b473))
+
+## [1.9.0](https://github.com/JongHyun070105/how-about-this/compare/v1.8.2...v1.9.0) (2026-04-30)
+
+
+### Features
+
+* flutter_jailbreak_detection 패키지 도입 ([7db394e](https://github.com/JongHyun070105/how-about-this/commit/7db394e30df60d164feefb4ca12ed1e1be2ffb9f))
+* flutter_jailbreak_detection 패키지 도입 ([4417197](https://github.com/JongHyun070105/how-about-this/commit/4417197b9891051264e8a2740fe8a914f16232a5))
+* 관심사 로직 분리 및 BannerAdWidget 컴포넌트 캡슐화, 단위 테스트 작성 ([1dda27a](https://github.com/JongHyun070105/how-about-this/commit/1dda27a7e1eff8de2691f8161d2d33d143052e85))
+
+## [1.8.2](https://github.com/JongHyun070105/how-about-this/compare/v1.8.1...v1.8.2) (2026-04-21)
+
+
+### Bug Fixes
+
+* .toml 파일 재수정 ([8593d70](https://github.com/JongHyun070105/how-about-this/commit/8593d70d6d84309d3d36a0ad71f8e4671ee76672))
+* **worker:** 해결을 위해 워크플로우 디버깅 단계 추가 및 wrangler 설정 최적화 ([c4ae452](https://github.com/JongHyun070105/how-about-this/commit/c4ae45255cb8e37530a8d4231ea450d43ab486c0))
+
 ## [1.8.1](https://github.com/JongHyun070105/how-about-this/compare/v1.8.0...v1.8.1) (2026-04-21)
 
 
