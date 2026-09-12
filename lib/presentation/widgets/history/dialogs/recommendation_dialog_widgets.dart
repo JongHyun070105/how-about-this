@@ -35,15 +35,7 @@ class RecommendationDialogButtons extends StatelessWidget {
                     : Colors.green.shade400,
                 sw: sw,
                 sh: sh,
-                onPressed: () async {
-                  await UserPreferenceService.recordFoodSelection(
-                    foodName: recommended.name,
-                    category: category,
-                    liked: true,
-                  );
-                  if (!context.mounted) return;
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => _onLikedAndSearch(context),
               ),
             ),
             SizedBox(width: sw * 0.02),
@@ -68,37 +60,29 @@ class RecommendationDialogButtons extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: sh * 0.01),
-        _dialogButton(
-          context: context,
-          icon: Icons.location_on,
-          label: '근처 음식점 찾기',
-          color: Theme.of(context).colorScheme.primary,
-          foreground: Theme.of(context).colorScheme.onPrimary,
-          sw: sw,
-          sh: sh,
-          onPressed: () async {
-            await UserPreferenceService.recordFoodSelection(
-              foodName: recommended.name,
-              category: category,
-              liked: true,
-            );
-            if (!context.mounted) return;
-            Navigator.of(context).pop('search');
-            unawaited(
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RestaurantSearchScreen(
-                    foodName: recommended.name,
-                    category: category,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        SizedBox(height: sh * 0.02),
+        SizedBox(height: sh * 0.015),
       ],
+    );
+  }
+
+  Future<void> _onLikedAndSearch(BuildContext context) async {
+    await UserPreferenceService.recordFoodSelection(
+      foodName: recommended.name,
+      category: category,
+      liked: true,
+    );
+    if (!context.mounted) return;
+    final navigator = Navigator.of(context);
+    navigator.pop('search');
+    unawaited(
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => RestaurantSearchScreen(
+            foodName: recommended.name,
+            category: category,
+          ),
+        ),
+      ),
     );
   }
 
