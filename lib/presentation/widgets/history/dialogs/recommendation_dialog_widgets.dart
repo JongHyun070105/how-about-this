@@ -35,15 +35,7 @@ class RecommendationDialogButtons extends StatelessWidget {
                     : Colors.green.shade400,
                 sw: sw,
                 sh: sh,
-                onPressed: () async {
-                  await UserPreferenceService.recordFoodSelection(
-                    foodName: recommended.name,
-                    category: category,
-                    liked: true,
-                  );
-                  if (!context.mounted) return;
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => _onLikedAndSearch(context),
               ),
             ),
             SizedBox(width: sw * 0.02),
@@ -77,28 +69,30 @@ class RecommendationDialogButtons extends StatelessWidget {
           foreground: Theme.of(context).colorScheme.onPrimary,
           sw: sw,
           sh: sh,
-          onPressed: () async {
-            await UserPreferenceService.recordFoodSelection(
-              foodName: recommended.name,
-              category: category,
-              liked: true,
-            );
-            if (!context.mounted) return;
-            Navigator.of(context).pop('search');
-            unawaited(
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RestaurantSearchScreen(
-                    foodName: recommended.name,
-                    category: category,
-                  ),
-                ),
-              ),
-            );
-          },
+          onPressed: () => _onLikedAndSearch(context),
         ),
         SizedBox(height: sh * 0.02),
       ],
+    );
+  }
+
+  Future<void> _onLikedAndSearch(BuildContext context) async {
+    await UserPreferenceService.recordFoodSelection(
+      foodName: recommended.name,
+      category: category,
+      liked: true,
+    );
+    if (!context.mounted) return;
+    Navigator.of(context).pop('search');
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RestaurantSearchScreen(
+            foodName: recommended.name,
+            category: category,
+          ),
+        ),
+      ),
     );
   }
 
