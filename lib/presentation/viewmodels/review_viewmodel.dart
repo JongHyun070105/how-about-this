@@ -69,7 +69,21 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
       }
 
       if (!context.mounted) return;
-      await _handleAdFlow(context);
+
+      // 광고 시청 중에 백그라운드에서 AI 리뷰를 미리 병렬 생성(Prefetch)
+      // 사용자가 광고를 보는 동안 생성이 완료되므로, 광고 종료 즉시 대기 시간 없이 결과창으로 이동합니다.
+      final reviewState = _ref.read(reviewProvider);
+      final reviewFuture = _generateReviewUseCase(
+        foodName: reviewState.foodName,
+        deliveryRating: reviewState.deliveryRating,
+        tasteRating: reviewState.tasteRating,
+        portionRating: reviewState.portionRating,
+        priceRating: reviewState.priceRating,
+        reviewStyle: reviewState.selectedReviewStyle,
+        foodImage: reviewState.image,
+      );
+
+      await _handleAdFlow(context, reviewFuture);
     } catch (e) {
       if (!context.mounted) return;
       _handleGenerationError(context, e);
@@ -79,8 +93,11 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
   }
 
   /// 사용자에게 리워드 광고를 노출하고 시청 완료(보상 획득) 여부를 확인합니다.
-  /// 이 단계를 무사히 통과해야 실제 AI 서버로 리뷰 생성 요청을 보냅니다.
-  Future<void> _handleAdFlow(BuildContext context) async {
+  /// 병렬로 실행 중인 [reviewFuture]를 결합하여 광고 시청 후 즉시 결과를 제공합니다.
+  Future<void> _handleAdFlow(
+    BuildContext context,
+    Future<List<String>> reviewFuture,
+  ) async {
     final adServiceNotifier = _ref.read(adServiceProvider.notifier);
 
     final adShown = await adServiceNotifier.showAdWithRetry(
@@ -96,8 +113,8 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
     if (!context.mounted) return;
 
     if (adShown && _rewardEarned) {
-      LoggerService.i('광고 시청 완료 - 리뷰 생성 시작');
-      await _generateReviewsAfterAd(context);
+      LoggerService.i('광고 시청 완료 - 프리페치된 리뷰 결과 결합');
+      await _consumePrefetchedReviews(context, reviewFuture);
     } else {
       LoggerService.e('광고 실패 또는 보상 미획득 - 리뷰 생성 중단');
       if (!context.mounted) return;
@@ -115,34 +132,24 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
     }
   }
 
-  Future<void> _generateReviewsAfterAd(BuildContext context) async {
+  Future<void> _consumePrefetchedReviews(
+    BuildContext context,
+    Future<List<String>> reviewFuture,
+  ) async {
     if (!context.mounted) return;
 
     try {
-      LoggerService.d('리뷰 생성 시작');
-
-      // ReviewProvider에서 상태 가져오기
-      final reviewState = _ref.read(reviewProvider);
-
-      final reviews = await _generateReviewUseCase(
-        foodName: reviewState.foodName,
-        deliveryRating: reviewState.deliveryRating,
-        tasteRating: reviewState.tasteRating,
-        portionRating: reviewState.portionRating,
-        priceRating: reviewState.priceRating,
-        reviewStyle: reviewState.selectedReviewStyle,
-        foodImage: reviewState.image,
-      );
-
+      // 사용자가 광고를 보는 동안 백그라운드 생성이 이미 완료되어 0초 만에 반환됩니다.
+      final reviews = await reviewFuture;
       LoggerService.d('생성된 리뷰 개수: ${reviews.length}');
 
+      if (!context.mounted) return;
       _ref.read(reviewProvider.notifier).setGeneratedReviews(reviews);
 
       if (_isSuccessfulGeneration(reviews)) {
         await _updateUsageTracking();
         LoggerService.i('리뷰 생성 성공 - 화면 전환 준비');
       } else {
-        if (!context.mounted) return;
         showAppDialog(
           context,
           title: '알림',
@@ -150,7 +157,7 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
         );
       }
     } catch (e) {
-      LoggerService.e('리뷰 생성 중 오류: $e');
+      LoggerService.e('프리페치 리뷰 처리 중 오류: $e');
       if (context.mounted) {
         _handleGenerationError(context, e);
       }

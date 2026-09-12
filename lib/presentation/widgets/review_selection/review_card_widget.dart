@@ -22,42 +22,50 @@ class ReviewCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const activeColor = Color(0xFF2563EB);
+
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? Theme.of(context).colorScheme.secondaryContainer
+            ? (isDark ? const Color(0xFF1E2638) : const Color(0xFFF6FAFF))
             : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(responsive.isTablet ? 16.0 : 12.0),
         border: Border.all(
           color: isSelected
-              ? Theme.of(context).primaryColor.withAlpha((0.3 * 255).round())
-              : Theme.of(context).dividerColor,
+              ? activeColor
+              : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
           width: isSelected ? 2.0 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
             color: isSelected
-                ? Theme.of(context).primaryColor.withAlpha((0.1 * 255).round())
-                : Colors.grey.withAlpha((0.08 * 255).round()),
-            blurRadius: isSelected ? 8.0 : 4.0,
+                ? activeColor.withAlpha((0.15 * 255).round())
+                : Colors.black.withAlpha((0.05 * 255).round()),
+            blurRadius: isSelected ? 12.0 : 4.0,
             offset: Offset(0, isSelected ? 4.0 : 2.0),
           ),
         ],
       ),
       child: Column(
-        children: [_buildHeader(context), _buildContentArea(context)],
+        children: [
+          _buildHeader(context, isDark, activeColor),
+          _buildContentArea(context),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isDark, Color activeColor) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: responsive.horizontalPadding() * 0.6,
-        vertical: responsive.verticalSpacing() * 0.4,
+        vertical: responsive.verticalSpacing() * 0.45,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: isSelected
+            ? (isDark ? const Color(0xFF23304A) : const Color(0xFFEBF3FE))
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(responsive.isTablet ? 16.0 : 12.0),
           topRight: Radius.circular(responsive.isTablet ? 16.0 : 12.0),
@@ -69,15 +77,60 @@ class ReviewCardWidget extends StatelessWidget {
           Text(
             'AI 생성 리뷰',
             style: textTheme.bodySmall?.copyWith(
-              color: Colors.grey.shade600,
+              color: isSelected ? activeColor : Colors.grey.shade600,
               fontFamily: 'Do Hyeon',
               fontSize: responsive.captionFontSize(),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          _buildSelectionBadge(activeColor),
           _buildEditButton(context),
         ],
       ),
+    );
+  }
+
+  Widget _buildSelectionBadge(Color activeColor) {
+    if (isSelected) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: activeColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_rounded, size: 14, color: Colors.white),
+            SizedBox(width: 4),
+            Text(
+              '선택됨',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Do Hyeon',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.touch_app_outlined, size: 14, color: Colors.grey.shade500),
+        const SizedBox(width: 3),
+        Text(
+          '탭하여 선택',
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 12,
+            fontFamily: 'Do Hyeon',
+          ),
+        ),
+      ],
     );
   }
 
@@ -126,19 +179,17 @@ class ReviewCardWidget extends StatelessWidget {
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.all(responsive.horizontalPadding() * 0.6),
-            child: Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Text(
-                  review,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontFamily: 'Do Hyeon',
-                    fontSize: responsive.bodyFontSize(),
-                    color: Theme.of(context).textTheme.bodyMedium?.color,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.left,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Text(
+                review,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontFamily: 'Do Hyeon',
+                  fontSize: responsive.bodyFontSize(),
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  height: 1.5,
                 ),
+                textAlign: TextAlign.left,
               ),
             ),
           ),
