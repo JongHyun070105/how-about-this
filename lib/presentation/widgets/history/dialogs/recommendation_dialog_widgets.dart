@@ -83,9 +83,10 @@ class RecommendationDialogButtons extends StatelessWidget {
       liked: true,
     );
     if (!context.mounted) return;
-    Navigator.of(context).pop('search');
+    final navigator = Navigator.of(context);
+    navigator.pop('search');
     unawaited(
-      Navigator.of(context).push(
+      navigator.push(
         MaterialPageRoute(
           builder: (_) => RestaurantSearchScreen(
             foodName: recommended.name,
