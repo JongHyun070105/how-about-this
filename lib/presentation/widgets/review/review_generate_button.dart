@@ -33,9 +33,9 @@ class ReviewGenerateButton extends StatelessWidget {
         button: true,
         child: PrimaryActionButton(
           text: '리뷰 생성하기',
-          isEnabled: isValid,
+          isEnabled: isValid && !isLoading,
           onPressed: onPressed,
-          isLoading: isLoading,
+          isLoading: false,
         ),
       ),
     );

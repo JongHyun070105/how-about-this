@@ -47,44 +47,7 @@ class ImageUploadSection extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                _buildImageContent(context, image, isPicking),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Semantics(
-                    label: '좋은 사진 선택 팁 보기',
-                    button: true,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).iconTheme.color,
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const AlertDialog(
-                            title: Text('좋은 사진 선택 팁'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('✓ 음식 전체가 잘 보이는 사진'),
-                                Text('✓ 조명이 밝고 선명한 사진'),
-                                Text('✓ 접시나 용기까지 포함된 사진'),
-                                Text('✗ 일부만 보이거나 흐린 사진'),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            child: _buildImageContent(context, image, isPicking),
           ),
         ),
       ),

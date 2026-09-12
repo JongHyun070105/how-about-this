@@ -1,0 +1,4 @@
+• Enhanced AI review generation with Gemini 3.5 Flash-Lite
+• Improved weather-based food recommendations
+• Security enhancements and performance optimizations
+• Bug fixes and user experience improvements

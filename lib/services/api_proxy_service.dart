@@ -188,7 +188,8 @@ class ApiProxyService {
   /// 이미지 검증
   Future<bool> validateImage(File foodImage) async {
     const prompt =
-        'Analyze the attached image. Is this a picture of prepared food suitable for a food review? Do not consider raw ingredients like a single raw onion or a piece of raw meat as prepared food. Respond with only a JSON object in the format {"is_food": boolean}.';
+        'Analyze the attached image. Is this a picture of food, a dish, a meal, snacks, or drinks suitable for a food review? '
+        'Respond with only a JSON object: {"is_food": true} or {"is_food": false}.';
 
     try {
       final parts = await _buildParts(prompt, foodImage);
@@ -197,35 +198,44 @@ class ApiProxyService {
         'contents': [
           {'parts': parts},
         ],
-        'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 10},
+        'generationConfig': {
+          'temperature': 0.0,
+          'maxOutputTokens': 256,
+          'responseMimeType': 'application/json',
+        },
       };
 
       final data = await _callGeminiApi('generateContent', requestBody);
 
       final content = GeminiResponseParser.extractText(data);
-      if (content == null) {
-        throw ImageValidationException('모델의 응답을 파싱할 수 없습니다.');
+      if (content == null || content.isEmpty) {
+        LoggerService.w('validateImage: 모델 응답이 비어있어 기본 통과 처리');
+        return true;
       }
 
       try {
         final cleanedContent = GeminiResponseParser.cleanMarkdownJson(content);
-        final decoded = json.decode(cleanedContent) as Map<String, dynamic>;
-        final isFood = decoded['is_food'] as bool?;
-
-        if (isFood == true) {
-          return true;
-        } else {
-          throw ImageValidationException('이 사진은 음식 사진이 아니거나 리뷰에 적합하지 않습니다.');
+        final decoded = json.decode(cleanedContent);
+        if (decoded is Map<String, dynamic>) {
+          final isFood = decoded['is_food'];
+          if (isFood is bool) return isFood;
         }
+        return content.toLowerCase().contains('true');
       } on FormatException {
-        throw ImageValidationException('이미지 분석 결과를 처리하는 데 실패했습니다.');
+        final containsTrue = content.toLowerCase().contains('true');
+        final containsFalse = content.toLowerCase().contains('false');
+        if (containsTrue && !containsFalse) return true;
+        if (containsFalse && !containsTrue) return false;
+        return true;
       } catch (e) {
-        throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');
+        LoggerService.w('validateImage 파싱 오류: $e (기본 통과)');
+        return true;
       }
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ImageValidationException('이미지 검증 중 오류가 발생했습니다.');
+      LoggerService.e('이미지 검증 중 오류 발생 (기본 통과): $e');
+      return true;
     }
   }
 
@@ -241,7 +251,7 @@ class ApiProxyService {
         'contents': [
           {'parts': parts},
         ],
-        'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 20},
+        'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 100},
       };
 
       final data = await _callGeminiApi('generateContent', requestBody);

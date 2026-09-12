@@ -58,3 +58,6 @@ graphify-out/
 android/service_account.json
 android/key.properties
 android/app/upload-keystore.jks
+
+# Fastlane generated build-specific changelogs
+android/fastlane/metadata/android/*/changelogs/[0-9]*.txt
