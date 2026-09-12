@@ -60,18 +60,7 @@ class RecommendationDialogButtons extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: sh * 0.01),
-        _dialogButton(
-          context: context,
-          icon: Icons.location_on,
-          label: '근처 음식점 찾기',
-          color: Theme.of(context).colorScheme.primary,
-          foreground: Theme.of(context).colorScheme.onPrimary,
-          sw: sw,
-          sh: sh,
-          onPressed: () => _onLikedAndSearch(context),
-        ),
-        SizedBox(height: sh * 0.02),
+        SizedBox(height: sh * 0.015),
       ],
     );
   }

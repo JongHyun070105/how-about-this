@@ -79,7 +79,7 @@ void main() {
 
     expect(find.text('좋아요!'), findsOneWidget);
     expect(find.text('다른 걸로'), findsOneWidget);
-    expect(find.text('근처 음식점 찾기'), findsOneWidget);
+    expect(find.text('근처 음식점 찾기'), findsNothing);
 
     // 좋아요! 탭
     await tester.tap(find.text('좋아요!'));
@@ -151,35 +151,5 @@ void main() {
     // 다이얼로그 결과 확인
     expect(dialogResult, isTrue);
     expect(find.byType(RestaurantSearchScreen), findsNothing);
-  });
-
-  testWidgets('근처 음식점 찾기 버튼 탭 시 취향 저장(liked: true) 후 맛집 검색 화면으로 이동한다', (
-    tester,
-  ) async {
-    const food = FoodRecommendation(name: '초밥');
-    const category = '일식';
-
-    await tester.pumpWidget(
-      createTestWidget(recommended: food, category: category),
-    );
-
-    // 다이얼로그 열기
-    await tester.tap(find.text('Open Dialog'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    // 근처 음식점 찾기 탭
-    await tester.tap(find.text('근처 음식점 찾기'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    // 취향 저장 확인
-    final history = await UserPreferenceService.getFoodSelectionHistory();
-    expect(history.length, 1);
-    expect(history.first.foodName, '초밥');
-    expect(history.first.liked, isTrue);
-
-    // 맛집 검색 화면으로 이동 확인
-    expect(find.byType(RestaurantSearchScreen), findsOneWidget);
   });
 }
