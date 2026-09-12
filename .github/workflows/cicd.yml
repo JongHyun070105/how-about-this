@@ -138,6 +138,14 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
+      - name: Generate Release Notes (Gemini AI & Fallback)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          BUILD_NUMBER=$(( ${{ github.run_number }} + 200 ))
+          python3 .github/scripts/generate_release_notes.py $BUILD_NUMBER
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
       - name: Deploy to Play Store (Main)
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         uses: maierj/fastlane-action@v3.0.0

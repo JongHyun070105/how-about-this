@@ -35,20 +35,4 @@ tag = "v6"
 new_sqlite_classes = ["GeminiProxyV2"]
 deleted_classes = ["GeminiProxy"]
 
-[env.staging]
-name = "reviewai-api-proxy-staging"
-[[env.staging.kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "00cc2b1530ca499fbaef968ef9c7ca95"
-[[env.staging.kv_namespaces]]
-binding = "API_CACHE"
-id = "7238157c15ff41a3bbdbbd25b8363784"
-[[env.staging.durable_objects.bindings]]
-name = "GEMINI_PROXY_V2"
-class_name = "GeminiProxyV2"
-[env.staging.vars]
-MIN_APP_VERSION = "1.0.0"
 
-[[env.staging.migrations]]
-tag = "v1"
-new_sqlite_classes = ["GeminiProxyV2"]
