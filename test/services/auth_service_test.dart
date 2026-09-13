@@ -219,6 +219,27 @@ void main() {
         expect(await fakeStorage.read(key: 'token_expiry'), isNotNull);
       },
     );
+
+    test('App Check 토큰을 얻지 못하면 증명 헤더 없이 호환 요청을 보낸다', () async {
+      AuthService.mockAppCheckTokenProvider = () async => null;
+      AuthService.mockClient = MockClient((request) async {
+        expect(request.url.path, '/api/auth/token');
+        expect(request.headers['x-firebase-appcheck'], isNull);
+        return http.Response(
+          jsonEncode({
+            'accessToken': 'monitor_mode_access_token',
+            'refreshToken': 'monitor_mode_refresh_token',
+            'expiresIn': 3600,
+          }),
+          200,
+        );
+      });
+
+      expect(
+        await AuthService.getValidAccessToken(),
+        'monitor_mode_access_token',
+      );
+    });
   });
 
   group('AuthService - 네트워크 에러 및 API 실패 대응 테스트', () {

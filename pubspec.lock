@@ -458,7 +458,7 @@ packages:
     source: hosted
     version: "0.4.7"
   firebase_app_check_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: firebase_app_check_platform_interface
       sha256: "87909de3a8952e69ab0d8b65b89311f3aebf3adb89acbfb0e65c00e57f78eb7e"
@@ -482,7 +482,7 @@ packages:
     source: hosted
     version: "4.14.0"
   firebase_core_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: firebase_core_platform_interface
       sha256: "9bfbc85faca09346471ac56fbcee00757ebcfd85887c6f602764eff0001902d8"
