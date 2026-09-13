@@ -48,6 +48,7 @@ app.*.map.json
 .vercel
 .kiro/
 node_modules/
+cloudflare-worker/.wrangler/
 
 # CI tool credentials and local build reports
 .github/ci-tools/node_modules/

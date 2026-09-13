@@ -7,6 +7,7 @@ import 'package:review_ai/presentation/screens/security_block_screen.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:review_ai/core/utils/logger_service.dart';
+import 'package:review_ai/services/app_attestation_service.dart';
 // Added url_launcher import
 import 'app_constants.dart';
 import 'environment_config.dart';
@@ -84,7 +85,8 @@ class SecurityConfig {
   }
 
   // App Integrity & Security Checks (as before)
-  static Future<bool> verifyAppIntegrity() async => true; // 현재는 단순화됨
+  static Future<bool> verifyAppIntegrity() =>
+      AppAttestationService.verifyIntegrity();
   static bool detectDebugger() => kDebugMode || kProfileMode;
 
   /// flutter_jailbreak_detection 패키지를 활용한 루팅/탈옥 탐지

@@ -77,6 +77,7 @@ void main() {
     AuthService.mockStorage = fakeStorage;
     AuthService.mockAppVersion = '1.2.3';
     AuthService.mockDeviceInfo = 'Test-Android-Device';
+    AuthService.mockAppCheckTokenProvider = () async => 'app-check-token';
     AuthService.setMockToken(
       accessToken: null,
       refreshToken: null,
@@ -89,6 +90,7 @@ void main() {
     AuthService.mockClient = null;
     AuthService.mockAppVersion = null;
     AuthService.mockDeviceInfo = null;
+    AuthService.mockAppCheckTokenProvider = null;
     AuthService.setMockToken(
       accessToken: null,
       refreshToken: null,
@@ -143,6 +145,10 @@ void main() {
           if (request.url.path == '/api/auth/refresh') {
             refreshCalled = true;
             expect(request.method, equals('POST'));
+            expect(
+              request.headers['x-firebase-appcheck'],
+              equals('app-check-token'),
+            );
             final Map<String, dynamic> body = jsonDecode(request.body);
             expect(body['refreshToken'], equals('valid_refresh_token'));
 
@@ -177,6 +183,10 @@ void main() {
           if (request.url.path == '/api/auth/token') {
             tokenApiCalled = true;
             expect(request.method, equals('POST'));
+            expect(
+              request.headers['x-firebase-appcheck'],
+              equals('app-check-token'),
+            );
             final Map<String, dynamic> body = jsonDecode(request.body);
             expect(body['deviceId'], isNotNull);
             expect(body['appVersion'], equals('1.2.3'));
@@ -209,6 +219,27 @@ void main() {
         expect(await fakeStorage.read(key: 'token_expiry'), isNotNull);
       },
     );
+
+    test('App Check 토큰을 얻지 못하면 증명 헤더 없이 호환 요청을 보낸다', () async {
+      AuthService.mockAppCheckTokenProvider = () async => null;
+      AuthService.mockClient = MockClient((request) async {
+        expect(request.url.path, '/api/auth/token');
+        expect(request.headers['x-firebase-appcheck'], isNull);
+        return http.Response(
+          jsonEncode({
+            'accessToken': 'monitor_mode_access_token',
+            'refreshToken': 'monitor_mode_refresh_token',
+            'expiresIn': 3600,
+          }),
+          200,
+        );
+      });
+
+      expect(
+        await AuthService.getValidAccessToken(),
+        'monitor_mode_access_token',
+      );
+    });
   });
 
   group('AuthService - 네트워크 에러 및 API 실패 대응 테스트', () {

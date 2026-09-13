@@ -8,11 +8,17 @@ import {
   validateRefreshRequest,
   validateTokenRequest,
 } from "./requestValidation.js";
+import { assessAppCheckRequest } from "./appCheck.js";
 
 const JWT_EXPIRES_IN = 3600;
 const REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 3600;
+const UNVERIFIED_REFRESH_TOKEN_EXPIRES_IN = 24 * 3600;
 
 export async function handleTokenGeneration(request, env) {
+  const appCheck = await assessAppCheckRequest(request, env);
+  if (!appCheck.accepted) {
+    return jsonResponse({ error: "Valid app attestation required" }, 401, CORS_HEADERS);
+  }
   let tokenRequest;
   try {
     tokenRequest = validateTokenRequest(await readJsonWithLimit(request, MAX_AUTH_REQUEST_BYTES));
@@ -23,18 +29,40 @@ export async function handleTokenGeneration(request, env) {
   const { deviceId, appVersion, deviceInfo } = tokenRequest;
   const minAppVersion = env.MIN_APP_VERSION || "1.0.0";
   if (!isVersionAtLeast(appVersion, minAppVersion)) return jsonResponse({ error: "App version too old", message: `Minimum app version required: ${minAppVersion}` }, 400, CORS_HEADERS);
-  const deviceHash = await sha256Hash(`${deviceId}-${appVersion}-${deviceInfo || ""}`);
-  const payload = { deviceId, appVersion, deviceHash, jti: generateUUID(), type: "access" };
+  const deviceHash = await sha256Hash(`${deviceId}-${appVersion}-${deviceInfo || ""}-${appCheck.appId || "unverified"}`);
+  const attestation = appCheck.verified ? "verified" : "unverified";
+  const payload = { deviceId, appVersion, deviceHash, appId: appCheck.appId, attestation, jti: generateUUID(), type: "access" };
   const accessToken = await generateJWT(payload, env.JWT_SECRET, JWT_EXPIRES_IN);
-  const refreshToken = await generateJWT({ deviceId, deviceHash, type: "refresh" }, env.JWT_SECRET, REFRESH_TOKEN_EXPIRES_IN);
+  const refreshExpiresIn = appCheck.verified
+    ? REFRESH_TOKEN_EXPIRES_IN
+    : UNVERIFIED_REFRESH_TOKEN_EXPIRES_IN;
+  const refreshToken = await generateJWT(
+    { deviceId, deviceHash, appId: appCheck.appId, attestation, type: "refresh" },
+    env.JWT_SECRET,
+    refreshExpiresIn,
+  );
   return jsonResponse({ accessToken, refreshToken, expiresIn: JWT_EXPIRES_IN, tokenType: "Bearer" }, 200, CORS_HEADERS);
 }
 
 export async function handleTokenRefresh(request, env) {
   try {
+    const appCheck = await assessAppCheckRequest(request, env);
+    if (!appCheck.accepted) {
+      return jsonResponse({ error: "Valid app attestation required" }, 401, CORS_HEADERS);
+    }
     const refreshToken = validateRefreshRequest(await readJsonWithLimit(request, MAX_AUTH_REQUEST_BYTES));
     const decoded = await verifyJWT(refreshToken, env.JWT_SECRET, { expectedType: "refresh" });
-    const payload = { deviceId: decoded.deviceId, deviceHash: decoded.deviceHash, jti: generateUUID(), type: "access" };
+    if (decoded.appId && appCheck.appId && decoded.appId !== appCheck.appId) {
+      return jsonResponse({ error: "App attestation mismatch" }, 401, CORS_HEADERS);
+    }
+    const payload = {
+      deviceId: decoded.deviceId,
+      deviceHash: decoded.deviceHash,
+      appId: appCheck.appId || decoded.appId,
+      attestation: appCheck.verified ? "verified" : decoded.attestation,
+      jti: generateUUID(),
+      type: "access",
+    };
     const newAccessToken = await generateJWT(payload, env.JWT_SECRET, JWT_EXPIRES_IN);
     return jsonResponse({ accessToken: newAccessToken, expiresIn: JWT_EXPIRES_IN, tokenType: "Bearer" }, 200, CORS_HEADERS);
   } catch (error) {

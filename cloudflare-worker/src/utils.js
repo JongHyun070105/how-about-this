@@ -1,7 +1,7 @@
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-app-token",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Firebase-AppCheck, x-app-token",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -109,19 +109,17 @@ export function generateUUID() {
   return crypto.randomUUID();
 }
 
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 100;
-
-export async function checkRateLimit(env, clientId) {
-  const key = `rate_limit:${clientId}`;
-  const now = Date.now();
-  const data = await env.RATE_LIMIT.get(key, { type: "json" });
-  if (!data || now > data.resetTime) {
-    await env.RATE_LIMIT.put(key, JSON.stringify({ count: 1, resetTime: now + RATE_LIMIT_WINDOW }), { expirationTtl: 900 });
-    return true;
+export async function checkRateLimit(env, clientId, policy) {
+  const objectName = `${policy.bucket}:${clientId}`;
+  const id = env.RATE_LIMITER.idFromName(objectName);
+  const stub = env.RATE_LIMITER.get(id);
+  const response = await stub.fetch("https://rate-limiter.internal/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit: policy.limit, windowSeconds: policy.windowSeconds }),
+  });
+  if (response.status !== 200 && response.status !== 429) {
+    throw new Error("Rate limiter unavailable");
   }
-  if (data.count >= RATE_LIMIT_MAX_REQUESTS) return false;
-  data.count++;
-  await env.RATE_LIMIT.put(key, JSON.stringify(data), { expirationTtl: Math.ceil((data.resetTime - now) / 1000) });
-  return true;
+  return response.json();
 }
