@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/JongHyun070105/how-about-this/compare/v1.14.0...v1.15.0) (2026-09-13)
+
+
+### Features
+
+* add platform attestation and atomic rate limits ([#119](https://github.com/JongHyun070105/how-about-this/issues/119)) ([321c92e](https://github.com/JongHyun070105/how-about-this/commit/321c92e810289ba6c5b02779bfc683a3f1720e1f))
+
+
+### Bug Fixes
+
+* Android 15+ 16 KB 메모리 페이지 크기 지원 (rootbeer-lib 최신화) ([#106](https://github.com/JongHyun070105/how-about-this/issues/106)) ([d5fe8a8](https://github.com/JongHyun070105/how-about-this/commit/d5fe8a8bc19a3aae6b949d8f65bc8346835157a7))
+
 ## [1.14.0](https://github.com/JongHyun070105/how-about-this/compare/v1.13.0...v1.14.0) (2026-07-12)
 
 
