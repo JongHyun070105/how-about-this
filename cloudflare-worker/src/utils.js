@@ -34,17 +34,50 @@ export async function generateJWT(payload, secret, expiresIn) {
   return `${message}.${signature}`;
 }
 
-export async function verifyJWT(token, secret) {
+export async function verifyJWT(token, secret, { expectedType } = {}) {
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Invalid token format");
   const [encodedHeader, encodedPayload, signature] = parts;
+  let header;
+  try {
+    header = JSON.parse(base64urlDecode(encodedHeader));
+  } catch {
+    throw new Error("Invalid token header");
+  }
+  if (header.alg !== "HS256" || header.typ !== "JWT") throw new Error("Invalid token header");
   const message = `${encodedHeader}.${encodedPayload}`;
   const expectedSignature = await sign(message, secret);
   if (!timingSafeEqual(signature, expectedSignature)) throw new Error("Invalid signature");
-  const payload = JSON.parse(base64urlDecode(encodedPayload));
+  let payload;
+  try {
+    payload = JSON.parse(base64urlDecode(encodedPayload));
+  } catch {
+    throw new Error("Invalid token payload");
+  }
   const now = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < now) throw new Error("Token expired");
+  if (!Number.isInteger(payload.exp)) throw new Error("Invalid token expiry");
+  if (payload.exp <= now) throw new Error("Token expired");
+  if (!Number.isInteger(payload.iat) || payload.iat > now + 60) throw new Error("Invalid token issued time");
+  if (payload.iss !== "reviewai-api" || payload.aud !== "reviewai-app") throw new Error("Invalid token claims");
+  const isLegacyAccessToken = expectedType === "access" && payload.type === undefined;
+  if (expectedType && payload.type !== expectedType && !isLegacyAccessToken) {
+    throw new Error("Invalid token type");
+  }
   return payload;
+}
+
+export function isVersionAtLeast(version, minimum) {
+  const parse = (value) => {
+    if (typeof value !== "string" || !/^\d+\.\d+\.\d+$/.test(value)) return null;
+    return value.split(".").map(Number);
+  };
+  const current = parse(version);
+  const required = parse(minimum);
+  if (!current || !required) return false;
+  for (let index = 0; index < 3; index++) {
+    if (current[index] !== required[index]) return current[index] > required[index];
+  }
+  return true;
 }
 
 async function sign(message, secret) {

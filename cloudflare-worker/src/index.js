@@ -48,7 +48,7 @@ export default {
       return jsonResponse({ error: "Not Found" }, 404, CORS_HEADERS);
     } catch (error) {
       console.error("Worker error:", error);
-      return jsonResponse({ error: "Internal server error", details: error.message }, 500, CORS_HEADERS);
+      return jsonResponse({ error: "Internal server error" }, 500, CORS_HEADERS);
     }
   },
 };

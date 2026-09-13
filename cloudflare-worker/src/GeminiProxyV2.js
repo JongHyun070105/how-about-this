@@ -1,4 +1,10 @@
 import { CORS_HEADERS, jsonResponse } from "./utils.js";
+import {
+  MAX_GEMINI_REQUEST_BYTES,
+  RequestValidationError,
+  normalizeGeminiRequest,
+  readJsonWithLimit,
+} from "./requestValidation.js";
 
 export class GeminiProxyV2 {
   constructor(state, env) {
@@ -8,21 +14,8 @@ export class GeminiProxyV2 {
 
   async fetch(request) {
     try {
-      const body = await request.json();
-      const { endpoint, requestBody } = body;
-
-      const allowedEndpoints = [
-        "generateContent",
-        "generateReviews",
-        "validateImage",
-        "buildPersonalizedRecommendationPrompt",
-        "buildGenericRecommendationPrompt",
-        "generateFoodInsight",
-      ];
-
-      if (!endpoint || !allowedEndpoints.includes(endpoint)) {
-        return jsonResponse({ error: "Invalid endpoint" }, 400, CORS_HEADERS);
-      }
+      const body = await readJsonWithLimit(request, MAX_GEMINI_REQUEST_BYTES);
+      const { endpoint, requestBody } = normalizeGeminiRequest(body);
 
       const apiKey = this.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -40,14 +33,16 @@ export class GeminiProxyV2 {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API error:", response.status, errorText);
-        return jsonResponse({ error: "Gemini API error", details: errorText }, response.status, CORS_HEADERS);
+        console.error("Gemini API error status:", response.status);
+        return jsonResponse({ error: "Gemini API error" }, response.status, CORS_HEADERS);
       }
 
       const data = await response.json();
       return jsonResponse(data, 200, CORS_HEADERS);
     } catch (error) {
+      if (error instanceof RequestValidationError) {
+        return jsonResponse({ error: error.message }, error.status, CORS_HEADERS);
+      }
       console.error("Durable Object error:", error);
       return jsonResponse({ error: "Internal server error" }, 500, CORS_HEADERS);
     }
