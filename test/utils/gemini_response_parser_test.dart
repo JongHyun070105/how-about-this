@@ -4,6 +4,16 @@ import 'package:review_ai/data/models/food_recommendation.dart';
 
 void main() {
   group('GeminiResponseParser', () {
+    test('파싱 오류 로그에는 원문 응답이 포함되지 않는다', () {
+      const secretPayload = 'private-user-prompt';
+      final message = GeminiResponseParser.safeParseErrorMessage(
+        const FormatException('bad JSON', secretPayload),
+      );
+
+      expect(message, contains('FormatException'));
+      expect(message, isNot(contains(secretPayload)));
+    });
+
     group('extractText', () {
       test('정상적인 응답에서 텍스트를 추출한다', () {
         final response = {

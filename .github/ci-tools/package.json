@@ -1,0 +1,7 @@
+{
+  "name": "reviewai-ci-tools",
+  "private": true,
+  "devDependencies": {
+    "firebase-tools": "15.30.0"
+  }
+}

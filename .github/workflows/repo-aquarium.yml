@@ -16,8 +16,9 @@ concurrency:
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: JongHyun070105/repo-aquarium@v1
+      - uses: JongHyun070105/repo-aquarium@b0880ef25e74aaa7fed310f05caf4a1f731b0bbb # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           themes: coral-day,deep-ocean,github-dark,sunset-lagoon,arctic-ice,neon-cyber

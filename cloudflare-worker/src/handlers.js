@@ -1,32 +1,44 @@
-import { CORS_HEADERS, jsonResponse, generateJWT, verifyJWT, sha256Hash, generateUUID } from "./utils.js";
+import { CORS_HEADERS, jsonResponse, generateJWT, verifyJWT, sha256Hash, generateUUID, isVersionAtLeast } from "./utils.js";
+import {
+  MAX_FOOD_INSIGHT_REQUEST_BYTES,
+  MAX_AUTH_REQUEST_BYTES,
+  RequestValidationError,
+  readJsonWithLimit,
+  validateFoodInsightInput,
+  validateRefreshRequest,
+  validateTokenRequest,
+} from "./requestValidation.js";
 
 const JWT_EXPIRES_IN = 3600;
 const REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 3600;
 
 export async function handleTokenGeneration(request, env) {
-  const body = await request.json();
-  const { deviceId, appVersion, deviceInfo } = body;
-  if (!deviceId || !appVersion) return jsonResponse({ error: "Missing required fields", message: "deviceId and appVersion are required" }, 400, CORS_HEADERS);
+  let tokenRequest;
+  try {
+    tokenRequest = validateTokenRequest(await readJsonWithLimit(request, MAX_AUTH_REQUEST_BYTES));
+  } catch (error) {
+    if (error instanceof RequestValidationError) return jsonResponse({ error: error.message }, error.status, CORS_HEADERS);
+    throw error;
+  }
+  const { deviceId, appVersion, deviceInfo } = tokenRequest;
   const minAppVersion = env.MIN_APP_VERSION || "1.0.0";
-  if (appVersion < minAppVersion) return jsonResponse({ error: "App version too old", message: `Minimum app version required: ${minAppVersion}` }, 400, CORS_HEADERS);
+  if (!isVersionAtLeast(appVersion, minAppVersion)) return jsonResponse({ error: "App version too old", message: `Minimum app version required: ${minAppVersion}` }, 400, CORS_HEADERS);
   const deviceHash = await sha256Hash(`${deviceId}-${appVersion}-${deviceInfo || ""}`);
-  const payload = { deviceId, appVersion, deviceHash, jti: generateUUID() };
+  const payload = { deviceId, appVersion, deviceHash, jti: generateUUID(), type: "access" };
   const accessToken = await generateJWT(payload, env.JWT_SECRET, JWT_EXPIRES_IN);
   const refreshToken = await generateJWT({ deviceId, deviceHash, type: "refresh" }, env.JWT_SECRET, REFRESH_TOKEN_EXPIRES_IN);
   return jsonResponse({ accessToken, refreshToken, expiresIn: JWT_EXPIRES_IN, tokenType: "Bearer" }, 200, CORS_HEADERS);
 }
 
 export async function handleTokenRefresh(request, env) {
-  const body = await request.json();
-  const { refreshToken } = body;
-  if (!refreshToken) return jsonResponse({ error: "Refresh token is required" }, 400, CORS_HEADERS);
   try {
-    const decoded = await verifyJWT(refreshToken, env.JWT_SECRET);
-    if (decoded.type !== "refresh") return jsonResponse({ error: "Invalid token type" }, 400, CORS_HEADERS);
-    const payload = { deviceId: decoded.deviceId, deviceHash: decoded.deviceHash, jti: generateUUID() };
+    const refreshToken = validateRefreshRequest(await readJsonWithLimit(request, MAX_AUTH_REQUEST_BYTES));
+    const decoded = await verifyJWT(refreshToken, env.JWT_SECRET, { expectedType: "refresh" });
+    const payload = { deviceId: decoded.deviceId, deviceHash: decoded.deviceHash, jti: generateUUID(), type: "access" };
     const newAccessToken = await generateJWT(payload, env.JWT_SECRET, JWT_EXPIRES_IN);
     return jsonResponse({ accessToken: newAccessToken, expiresIn: JWT_EXPIRES_IN, tokenType: "Bearer" }, 200, CORS_HEADERS);
   } catch (error) {
+    if (error instanceof RequestValidationError) return jsonResponse({ error: error.message }, error.status, CORS_HEADERS);
     return jsonResponse({ error: "Invalid refresh token", message: "Please re-authenticate" }, 401, CORS_HEADERS);
   }
 }
@@ -36,7 +48,7 @@ export async function handleGeminiProxy(request, env) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) return jsonResponse({ error: "No valid token provided", message: "Authorization header with Bearer token is required" }, 401, CORS_HEADERS);
   const token = authHeader.substring(7);
   try {
-    await verifyJWT(token, env.JWT_SECRET);
+    await verifyJWT(token, env.JWT_SECRET, { expectedType: "access" });
   } catch (error) {
     return jsonResponse({ error: error.message === "Token expired" ? "Token expired" : "Invalid token", message: error.message === "Token expired" ? "Please refresh your token" : "Authentication failed" }, 401, CORS_HEADERS);
   }
@@ -51,7 +63,7 @@ export async function handleKakaoLocalProxy(request, env, ctx) {
   const token = authHeader.substring(7);
   let user;
   try {
-    user = await verifyJWT(token, env.JWT_SECRET);
+    user = await verifyJWT(token, env.JWT_SECRET, { expectedType: "access" });
   } catch (error) {
     return jsonResponse({ error: error.message === "Token expired" ? "Token expired" : "Invalid token", message: error.message === "Token expired" ? "Please refresh your token" : "Token verification failed" }, 401, CORS_HEADERS);
   }
@@ -90,8 +102,7 @@ export async function handleKakaoLocalProxy(request, env, ctx) {
       headers: { Authorization: `KakaoAK ${apiKey}`, "Content-Type": "application/json" },
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      return jsonResponse({ error: "Kakao API error", status: response.status, details: errorText }, response.status, CORS_HEADERS);
+      return jsonResponse({ error: "Kakao API error", status: response.status }, response.status, CORS_HEADERS);
     }
     const data = await response.json();
     const responseToCache = new Response(JSON.stringify(data), { headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
@@ -107,7 +118,7 @@ export async function handleWeatherProxy(request, env, ctx) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) return jsonResponse({ error: "No valid token provided", message: "Authorization header with Bearer token is required" }, 401, CORS_HEADERS);
   const token = authHeader.substring(7);
   try {
-    await verifyJWT(token, env.JWT_SECRET);
+    await verifyJWT(token, env.JWT_SECRET, { expectedType: "access" });
   } catch (error) {
     return jsonResponse({ error: error.message === "Token expired" ? "Token expired" : "Invalid token", message: error.message === "Token expired" ? "Please refresh your token" : "Token verification failed" }, 401, CORS_HEADERS);
   }
@@ -133,8 +144,7 @@ export async function handleWeatherProxy(request, env, ctx) {
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=kr`;
     const response = await fetch(weatherUrl);
     if (!response.ok) {
-      const errorText = await response.text();
-      return jsonResponse({ error: "Weather API error", details: errorText }, response.status, CORS_HEADERS);
+      return jsonResponse({ error: "Weather API error" }, response.status, CORS_HEADERS);
     }
     const data = await response.json();
     const responseToCache = new Response(JSON.stringify(data), { headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=1800" } });
@@ -160,7 +170,7 @@ export async function handleServerTime(request, env) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) return jsonResponse({ error: "No valid token provided", message: "Authorization header with Bearer token is required" }, 401, CORS_HEADERS);
   const token = authHeader.substring(7);
   try {
-    await verifyJWT(token, env.JWT_SECRET);
+    await verifyJWT(token, env.JWT_SECRET, { expectedType: "access" });
     const now = new Date();
     return jsonResponse({ serverTime: now.toISOString(), timestamp: now.getTime(), timezone: "UTC" }, 200, CORS_HEADERS);
   } catch (error) {
@@ -174,14 +184,13 @@ export async function handleFoodInsight(request, env, ctx) {
   const token = authHeader.substring(7);
   let user;
   try {
-    user = await verifyJWT(token, env.JWT_SECRET);
+    user = await verifyJWT(token, env.JWT_SECRET, { expectedType: "access" });
   } catch (error) {
     return jsonResponse({ error: error.message === "Token expired" ? "Token expired" : "Invalid token", message: error.message === "Token expired" ? "Please refresh your token" : undefined }, 401, CORS_HEADERS);
   }
   try {
-    const body = await request.json();
-    const { categoryFrequency, topFoods, totalReviews, weeklyCount, streak } = body;
-    if (!categoryFrequency || !topFoods) return jsonResponse({ error: "Missing required fields: categoryFrequency, topFoods" }, 400, CORS_HEADERS);
+    const body = await readJsonWithLimit(request, MAX_FOOD_INSIGHT_REQUEST_BYTES);
+    const { categoryFrequency, topFoods, totalReviews, weeklyCount, streak } = validateFoodInsightInput(body);
     
     const today = new Date().toISOString().split("T")[0];
     const cacheUrl = new URL(`https://api.reviewai.internal/insight?hash=${user.deviceHash}&date=${today}`);
@@ -213,6 +222,9 @@ export async function handleFoodInsight(request, env, ctx) {
     ctx.waitUntil(cache.put(cacheRequest, responseToCache));
     return jsonResponse({ ...result, cached: false }, 200, CORS_HEADERS);
   } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return jsonResponse({ error: error.message }, error.status, CORS_HEADERS);
+    }
     return jsonResponse({ error: "Internal server error" }, 500, CORS_HEADERS);
   }
 }
