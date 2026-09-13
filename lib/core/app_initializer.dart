@@ -10,6 +10,7 @@ import 'package:review_ai/core/utils/logger_service.dart';
 import '../firebase_options.dart';
 import 'package:review_ai/config/security_config.dart';
 import 'package:review_ai/services/auth_service.dart';
+import 'package:review_ai/services/app_attestation_service.dart';
 import 'package:review_ai/services/config_service.dart';
 import 'package:review_ai/services/remote_config_service.dart';
 import 'package:review_ai/services/server_time_service.dart';
@@ -30,6 +31,12 @@ class AppInitializer {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // 정식 빌드는 Play Integrity/App Attest, 디버그 빌드는 Firebase Debug
+    // provider를 사용합니다. 서버 강제 전환 전에는 실패를 기록하고 진행합니다.
+    await AppAttestationService.initialize().catchError((error, stack) {
+      LoggerService.e('App attestation initialization failed', error, stack);
+    });
 
     // Crash Reporting 시스템 초기화 (내부적으로 Crashlytics 설정)
     await CrashReportingService().initialize();

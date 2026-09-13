@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { GeminiProxyV2 } from "../src/GeminiProxyV2.js";
-import { generateJWT, isVersionAtLeast, verifyJWT } from "../src/utils.js";
+import { RateLimiter } from "../src/RateLimiter.js";
+import { verifyFirebaseAppCheckToken } from "../src/appCheck.js";
+import { handleTokenGeneration } from "../src/handlers.js";
+import { checkRateLimit, generateJWT, isVersionAtLeast, verifyJWT } from "../src/utils.js";
 import {
   normalizeGeminiRequest,
   validateTokenRequest,
@@ -10,6 +13,131 @@ import {
 } from "../src/requestValidation.js";
 
 const SECRET = "test-secret-with-enough-entropy";
+
+function base64url(value) {
+  return Buffer.from(value).toString("base64url");
+}
+
+async function createAppCheckFixture(overrides = {}) {
+  const { publicKey, privateKey } = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const jwk = await crypto.subtle.exportKey("jwk", publicKey);
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT", kid: "test-key" };
+  const payload = {
+    iss: "https://firebaseappcheck.googleapis.com/728734846473",
+    aud: ["projects/728734846473"],
+    sub: "1:728734846473:android:b8758b19fdde6d70c872d8",
+    iat: now,
+    exp: now + 3600,
+    ...overrides,
+  };
+  const message = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", privateKey, new TextEncoder().encode(message));
+  return {
+    token: `${message}.${Buffer.from(signature).toString("base64url")}`,
+    jwks: { keys: [{ ...jwk, kid: "test-key", alg: "RS256", use: "sig" }] },
+  };
+}
+
+test("Firebase App Check verification binds project and registered app id", async () => {
+  const fixture = await createAppCheckFixture();
+  const payload = await verifyFirebaseAppCheckToken(fixture.token, {
+    FIREBASE_PROJECT_NUMBER: "728734846473",
+    FIREBASE_APP_IDS: "1:728734846473:android:b8758b19fdde6d70c872d8,1:728734846473:ios:5788de31bc676837c872d8",
+  }, async () => new Response(JSON.stringify(fixture.jwks), {
+    headers: { "Cache-Control": "public, max-age=3600" },
+  }));
+
+  assert.equal(payload.sub, "1:728734846473:android:b8758b19fdde6d70c872d8");
+});
+
+test("Firebase App Check verification rejects an unregistered app id", async () => {
+  const fixture = await createAppCheckFixture({ sub: "1:728734846473:android:attacker" });
+  await assert.rejects(
+    verifyFirebaseAppCheckToken(fixture.token, {
+      FIREBASE_PROJECT_NUMBER: "728734846473",
+      FIREBASE_APP_IDS: "1:728734846473:android:b8758b19fdde6d70c872d8",
+    }, async () => new Response(JSON.stringify(fixture.jwks))),
+    /app id/i,
+  );
+});
+
+test("token bootstrap rejects missing attestation in enforcement mode", async () => {
+  const response = await handleTokenGeneration(new Request("https://worker.test/api/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId: "device-1", appVersion: "1.15.0", deviceInfo: "android" }),
+  }), {
+    APP_CHECK_ENFORCEMENT: "enforce",
+  });
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "Valid app attestation required" });
+});
+
+test("token bootstrap remains compatible while attestation is monitored", async () => {
+  const response = await handleTokenGeneration(new Request("https://worker.test/api/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId: "device-1", appVersion: "1.15.0", deviceInfo: "android" }),
+  }), {
+    APP_CHECK_ENFORCEMENT: "monitor",
+    JWT_SECRET: SECRET,
+    MIN_APP_VERSION: "1.0.0",
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  const payload = await verifyJWT(body.accessToken, SECRET, { expectedType: "access" });
+  const refreshPayload = await verifyJWT(body.refreshToken, SECRET, { expectedType: "refresh" });
+  assert.equal(payload.attestation, "unverified");
+  assert.equal(refreshPayload.attestation, "unverified");
+  assert.equal(refreshPayload.exp - refreshPayload.iat, 24 * 3600);
+});
+
+test("Durable Object rate limiter enforces a fixed window atomically", async () => {
+  const values = new Map();
+  const storage = {
+    get: async (key) => values.get(key),
+    put: async (key, value) => values.set(key, value),
+    setAlarm: async () => {},
+    deleteAll: async () => values.clear(),
+  };
+  const limiter = new RateLimiter({ storage }, {});
+  const request = () => new Request("https://limiter.test/", {
+    method: "POST",
+    body: JSON.stringify({ limit: 2, windowSeconds: 60 }),
+  });
+
+  assert.equal((await limiter.fetch(request())).status, 200);
+  assert.equal((await limiter.fetch(request())).status, 200);
+  const blocked = await limiter.fetch(request());
+  assert.equal(blocked.status, 429);
+  assert.ok(Number(blocked.headers.get("Retry-After")) > 0);
+});
+
+test("rate limit client delegates each bucket to its Durable Object", async () => {
+  let selectedName;
+  const env = {
+    RATE_LIMITER: {
+      idFromName(name) {
+        selectedName = name;
+        return name;
+      },
+      get() {
+        return { fetch: async () => new Response(JSON.stringify({ allowed: false, remaining: 0, retryAfter: 12 }), { status: 429 }) };
+      },
+    },
+  };
+
+  const result = await checkRateLimit(env, "203.0.113.1", { bucket: "auth-token", limit: 10, windowSeconds: 900 });
+  assert.equal(selectedName, "auth-token:203.0.113.1");
+  assert.deepEqual(result, { allowed: false, remaining: 0, retryAfter: 12 });
+});
 
 test("access endpoints reject refresh tokens", async () => {
   const refreshToken = await generateJWT(

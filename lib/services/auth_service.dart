@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import 'package:review_ai/config/api_config.dart';
+import 'package:review_ai/services/app_attestation_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
@@ -31,6 +32,9 @@ class AuthService {
 
   @visibleForTesting
   static String? mockDeviceInfo;
+
+  @visibleForTesting
+  static Future<String?> Function()? mockAppCheckTokenProvider;
 
   static final http.Client _defaultClient = http.Client();
 
@@ -101,6 +105,7 @@ class AuthService {
 
       const requestUrl = '${ApiConfig.proxyUrl}/api/auth/token';
       _debugLog('Requesting token from: $requestUrl');
+      final appCheckHeaders = await _getAppCheckHeaders();
 
       final response = await _client
           .post(
@@ -108,6 +113,7 @@ class AuthService {
             headers: {
               'Content-Type': 'application/json',
               'User-Agent': 'ReviewAI-Flutter/$appVersion',
+              ...appCheckHeaders,
             },
             body: jsonEncode({
               'deviceId': deviceId,
@@ -168,10 +174,11 @@ class AuthService {
 
   /// 리프레시 토큰으로 액세스 토큰 갱신
   static Future<String?> _refreshAccessToken(String refreshToken) async {
+    final appCheckHeaders = await _getAppCheckHeaders();
     final response = await _client
         .post(
           Uri.parse('${ApiConfig.proxyUrl}/api/auth/refresh'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', ...appCheckHeaders},
           body: jsonEncode({'refreshToken': refreshToken}),
         )
         .timeout(const Duration(seconds: 10));
@@ -193,6 +200,14 @@ class AuthService {
       await _clearTokens();
       return null;
     }
+  }
+
+  static Future<Map<String, String>> _getAppCheckHeaders() async {
+    final provider =
+        mockAppCheckTokenProvider ?? AppAttestationService.getToken;
+    final token = await provider();
+    if (token == null || token.isEmpty) return const {};
+    return {'X-Firebase-AppCheck': token};
   }
 
   /// 토큰 캐싱 (Secure Storage 사용)
