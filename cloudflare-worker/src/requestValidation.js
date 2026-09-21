@@ -47,7 +47,8 @@ function boundedLabel(value, name) {
 
 export async function readJsonWithLimit(request, maxBytes) {
   const contentType = request.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) {
+  const mediaType = contentType.split(";", 1)[0].trim().toLowerCase();
+  if (mediaType !== "application/json") {
     throw new RequestValidationError("Content-Type must be application/json", 415);
   }
 
@@ -56,10 +57,26 @@ export async function readJsonWithLimit(request, maxBytes) {
     throw new RequestValidationError("Request body is too large", 413);
   }
 
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > maxBytes) {
-    throw new RequestValidationError("Request body is too large", 413);
+  const chunks = [];
+  let totalBytes = 0;
+  if (request.body) {
+    for await (const chunk of request.body) {
+      const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+      totalBytes += bytes.byteLength;
+      if (totalBytes > maxBytes) {
+        throw new RequestValidationError("Request body is too large", 413);
+      }
+      chunks.push(bytes);
+    }
   }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder().decode(body);
 
   try {
     return JSON.parse(text);
