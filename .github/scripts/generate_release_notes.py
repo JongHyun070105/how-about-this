@@ -34,7 +34,7 @@ def get_release_notes_md():
     return ""
 
 def generate_notes_with_gemini(api_key, commits, md_content):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     
     prompt = f"""당신은 모바일 앱 '이거 먹자!' (ReviewAI)의 앱스토어 릴리즈 매니저입니다.
 최근 커밋 및 변경 내역을 바탕으로, Google Play Store의 '새로운 기능 (What's New / 출시 노트)'에 들어갈
@@ -73,7 +73,10 @@ JSON 스키마:
         req = urllib.request.Request(
             url,
             data=json.dumps(req_body).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            }
         )
         with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode("utf-8"))
@@ -82,7 +85,7 @@ JSON 스키마:
             if "ko" in parsed and "en" in parsed:
                 return parsed["ko"], parsed["en"]
     except Exception as e:
-        print(f"Gemini API request failed: {e}")
+        print(f"Gemini API request failed ({type(e).__name__}); using fallback.")
     
     return None, None
 

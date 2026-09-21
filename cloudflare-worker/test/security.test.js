@@ -8,6 +8,7 @@ import { handleTokenGeneration } from "../src/handlers.js";
 import { checkRateLimit, generateJWT, isVersionAtLeast, verifyJWT } from "../src/utils.js";
 import {
   normalizeGeminiRequest,
+  readJsonWithLimit,
   validateTokenRequest,
   validateFoodInsightInput,
 } from "../src/requestValidation.js";
@@ -196,6 +197,86 @@ test("token bootstrap metadata is bounded", () => {
     () => validateTokenRequest({ deviceId: "x".repeat(129), appVersion: "1.15.0" }),
     /deviceId/,
   );
+});
+
+test("request body limit cancels an oversized stream before EOF", async () => {
+  let pulls = 0;
+  let cancelled = false;
+  const stream = new ReadableStream({
+    pull(controller) {
+      pulls += 1;
+      if (pulls <= 10) controller.enqueue(new Uint8Array(8));
+      else controller.close();
+    },
+    cancel() {
+      cancelled = true;
+    },
+  }, { highWaterMark: 0 });
+  const request = new Request("https://worker.test/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: stream,
+    duplex: "half",
+  });
+
+  await assert.rejects(
+    readJsonWithLimit(request, 16),
+    (error) => error.status === 413 && /too large/i.test(error.message),
+  );
+  assert.equal(cancelled, true);
+  assert.ok(pulls < 10);
+});
+
+test("request body limit accepts exact UTF-8 bytes split across chunks", async () => {
+  const encoded = new TextEncoder().encode(JSON.stringify({ value: "한" }));
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoded.slice(0, encoded.length - 2));
+      controller.enqueue(encoded.slice(encoded.length - 2));
+      controller.close();
+    },
+  });
+  const request = new Request("https://worker.test/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+    body: stream,
+    duplex: "half",
+  });
+
+  assert.deepEqual(await readJsonWithLimit(request, encoded.byteLength), { value: "한" });
+});
+
+test("request JSON boundary preserves malformed-body and media-type errors", async () => {
+  await assert.rejects(
+    readJsonWithLimit(new Request("https://worker.test/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{",
+    }), 16),
+    (error) => error.status === 400 && /valid JSON/i.test(error.message),
+  );
+  await assert.rejects(
+    readJsonWithLimit(new Request("https://worker.test/", {
+      method: "POST",
+      headers: { "Content-Type": "text/application/json" },
+      body: "{}",
+    }), 16),
+    (error) => error.status === 415 && /Content-Type/i.test(error.message),
+  );
+});
+
+test("token bootstrap maps an oversized streamed body to 413", async () => {
+  const response = await handleTokenGeneration(new Request("https://worker.test/api/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: new Uint8Array(8 * 1024 + 1),
+    duplex: "half",
+  }), {
+    APP_CHECK_ENFORCEMENT: "monitor",
+  });
+
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: "Request body is too large" });
 });
 
 test("Gemini request keeps supported app settings within server limits", () => {

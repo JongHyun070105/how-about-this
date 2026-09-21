@@ -50,6 +50,13 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: cloudflare-worker/package-lock.json
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          cache-version: 2
+          working-directory: android
       - name: Install Flutter dependencies
         run: flutter pub get
       - name: Install Worker dependencies
@@ -57,6 +64,15 @@ jobs:
         run: npm ci
       - name: Check repository hygiene
         run: python3 .github/scripts/check_repository_hygiene.py
+      - name: Run CI helper tests
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Verify Fastlane toolchain
+        working-directory: android
+        env:
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+        run: |
+          bundle exec ruby -e 'require "fastlane"; require "zip"; puts "fastlane=#{Fastlane::VERSION} rubyzip=#{Gem.loaded_specs.fetch("rubyzip").version}"'
+          bundle exec fastlane lanes
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed .
       - name: Analyze code
