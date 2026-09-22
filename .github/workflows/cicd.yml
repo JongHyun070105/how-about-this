@@ -47,9 +47,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
-          cache-dependency-path: cloudflare-worker/package-lock.json
+          cache-dependency-path: |
+            cloudflare-worker/package-lock.json
+            .github/ci-tools/package-lock.json
       - name: Setup Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
@@ -62,10 +64,18 @@ jobs:
       - name: Install Worker dependencies
         working-directory: cloudflare-worker
         run: npm ci
+      - name: Install CI tool dependencies
+        working-directory: .github/ci-tools
+        run: npm ci
       - name: Check repository hygiene
         run: python3 .github/scripts/check_repository_hygiene.py
       - name: Run CI helper tests
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Verify Firebase CLI
+        working-directory: .github/ci-tools
+        run: |
+          npx --no-install firebase --version
+          npx --no-install firebase appdistribution:distribute --help > /dev/null
       - name: Verify Fastlane toolchain
         working-directory: android
         env:
@@ -143,7 +153,7 @@ jobs:
         if: github.ref == 'refs/heads/develop'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: .github/ci-tools/package-lock.json
       - name: Install Firebase CLI
