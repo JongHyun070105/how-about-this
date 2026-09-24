@@ -296,6 +296,37 @@ void main() {
         throwsA(isA<AuthException>()),
       );
     });
+
+    test(
+      '동시에 여러 getValidAccessToken() 호출 시 단 한 번만 네트워크 요청을 수행해야 함 (Single In-Flight)',
+      () async {
+        int requestCount = 0;
+        AuthService.mockClient = MockClient((request) async {
+          requestCount++;
+          await Future.delayed(const Duration(milliseconds: 50));
+          return http.Response(
+            jsonEncode({
+              'accessToken': 'concurrent_token',
+              'refreshToken': 'concurrent_refresh',
+              'expiresIn': 3600,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final results = await Future.wait([
+          AuthService.getValidAccessToken(),
+          AuthService.getValidAccessToken(),
+          AuthService.getValidAccessToken(),
+        ]);
+
+        expect(requestCount, equals(1));
+        expect(results[0], equals('concurrent_token'));
+        expect(results[1], equals('concurrent_token'));
+        expect(results[2], equals('concurrent_token'));
+      },
+    );
   });
 
   group('AuthService - 로그아웃 테스트', () {

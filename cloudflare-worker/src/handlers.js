@@ -107,6 +107,23 @@ export async function handleKakaoLocalProxy(request, env, ctx) {
   const categoryGroupCode = url.searchParams.get("category_group_code");
   if (!query || !x || !y) return jsonResponse({ error: "Missing required parameters", message: "query, x (longitude), and y (latitude) are required" }, 400, CORS_HEADERS);
 
+  const numX = Number(x);
+  const numY = Number(y);
+  const numRadius = Number(radius);
+  const numPage = Number(page);
+  const numSize = Number(size);
+
+  if (
+    query.length > 100 ||
+    !Number.isFinite(numX) || numX < -180 || numX > 180 ||
+    !Number.isFinite(numY) || numY < -90 || numY > 90 ||
+    !Number.isInteger(numRadius) || numRadius < 1 || numRadius > 20000 ||
+    !Number.isInteger(numPage) || numPage < 1 || numPage > 45 ||
+    !Number.isInteger(numSize) || numSize < 1 || numSize > 45
+  ) {
+    return jsonResponse({ error: "Invalid parameters", message: "Parameter values out of allowed range" }, 400, CORS_HEADERS);
+  }
+
   try {
     const shortX = parseFloat(x).toFixed(3);
     const shortY = parseFloat(y).toFixed(3);
@@ -154,6 +171,15 @@ export async function handleWeatherProxy(request, env, ctx) {
   const lat = url.searchParams.get("lat");
   const lon = url.searchParams.get("lon");
   if (!lat || !lon) return jsonResponse({ error: "Missing parameters", message: "lat and lon are required" }, 400, CORS_HEADERS);
+
+  const numLat = Number(lat);
+  const numLon = Number(lon);
+  if (
+    !Number.isFinite(numLat) || numLat < -90 || numLat > 90 ||
+    !Number.isFinite(numLon) || numLon < -180 || numLon > 180
+  ) {
+    return jsonResponse({ error: "Invalid parameters", message: "lat and lon must be valid geographic coordinates" }, 400, CORS_HEADERS);
+  }
   
   try {
     const shortLat = parseFloat(lat).toFixed(2);

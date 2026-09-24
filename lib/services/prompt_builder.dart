@@ -148,9 +148,18 @@ $examples
     required String reviewStyle,
     File? foodImage,
   }) {
-    String foodNameDescription = foodName;
-    if (foodName.contains('아시아 음식')) {
-      foodNameDescription = '$foodName (예: 똠양꿍, 팟타이, 베트남 쌀국수 등 동남아시아 요리 느낌으로)';
+    // 줄바꿈 및 제어 문자 제거, 최대 100자 제한 (프롬프트 인젝션 및 오염 방어)
+    final sanitizedFoodName = foodName
+        .replaceAll(RegExp(r'[\r\n\t]+'), ' ')
+        .trim();
+    final truncatedFoodName = sanitizedFoodName.length > 100
+        ? sanitizedFoodName.substring(0, 100)
+        : sanitizedFoodName;
+
+    String foodNameDescription = truncatedFoodName;
+    if (truncatedFoodName.contains('아시아 음식')) {
+      foodNameDescription =
+          '$truncatedFoodName (예: 똠양꿍, 팟타이, 베트남 쌀국수 등 동남아시아 요리 느낌으로)';
     }
     return '''
 당신은 음식 리뷰 작성 전문가입니다.

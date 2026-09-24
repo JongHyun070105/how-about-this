@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:review_ai/presentation/providers/app_providers.dart';
 import 'package:review_ai/presentation/providers/review_provider.dart';
 
+import 'api_proxy_service.dart';
 import 'image_optimization_service.dart';
 
 // 새로운 ReviewService의 Provider
@@ -121,6 +122,7 @@ class ReviewService {
       final reviewState = _ref.read(reviewProvider);
       if (optimizedImage != null && optimizedImage != reviewState.image) {
         try {
+          ApiProxyService.evictImage(optimizedImage.path);
           if (await optimizedImage.exists()) {
             await optimizedImage.delete();
             LoggerService.i('임시 최적화 이미지 파일 삭제 완료');

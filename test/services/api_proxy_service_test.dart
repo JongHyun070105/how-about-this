@@ -65,6 +65,41 @@ void main() {
         );
       });
 
+      test('429 Rate limit 에러 시 서버에서 반환한 JSON 에러 메시지를 보존하여 전달한다', () async {
+        final mockClient = http_testing.MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'error': 'Too many requests',
+              'message': 'Rate limit exceeded. Please try again later.',
+            }),
+            429,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final service = ApiProxyService(
+          mockClient,
+          'https://test-proxy.example.com',
+          tokenProvider: () async => 'test-token-123',
+        );
+
+        expect(
+          () => service.generateContent('test'),
+          throwsA(
+            isA<GeminiApiException>().having(
+              (e) => e.message,
+              'message',
+              contains('Rate limit exceeded'),
+            ),
+          ),
+        );
+      });
+
+      test('evictImage 호출 시 예외 없이 이미지 캐시를 해제한다', () {
+        ApiProxyService.clearImageCache();
+        ApiProxyService.evictImage('/tmp/test_image.jpg');
+      });
+
       test('Authorization 헤더에 Bearer 토큰 포함', () async {
         String? capturedAuth;
 
