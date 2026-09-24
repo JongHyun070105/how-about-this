@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /cloudflare-worker
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /.github/ci-tools
+    schedule:
+      interval: weekly
+  - package-ecosystem: bundler
+    directory: /android
+    schedule:
+      interval: weekly

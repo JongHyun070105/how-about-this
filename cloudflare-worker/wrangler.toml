@@ -19,20 +19,24 @@ invocation_logs = true
 [env.production]
 name = "reviewai-api-proxy"
 [[env.production.kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "00cc2b1530ca499fbaef968ef9c7ca95"
-[[env.production.kv_namespaces]]
 binding = "API_CACHE"
 id = "7238157c15ff41a3bbdbbd25b8363784"
 [[env.production.durable_objects.bindings]]
 name = "GEMINI_PROXY_V2"
 class_name = "GeminiProxyV2"
+[[env.production.durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
 [env.production.vars]
 MIN_APP_VERSION = "1.0.0"
+APP_CHECK_ENFORCEMENT = "monitor"
+FIREBASE_PROJECT_NUMBER = "728734846473"
+FIREBASE_APP_IDS = "1:728734846473:android:b8758b19fdde6d70c872d8,1:728734846473:ios:5788de31bc676837c872d8"
 
 [[env.production.migrations]]
 tag = "v6"
 new_sqlite_classes = ["GeminiProxyV2"]
-deleted_classes = ["GeminiProxy"]
 
-
+[[env.production.migrations]]
+tag = "v7"
+new_sqlite_classes = ["RateLimiter"]

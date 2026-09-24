@@ -24,19 +24,10 @@ npx wrangler login
 
 브라우저가 열리면 Cloudflare 계정으로 로그인하세요.
 
-### 4. KV Namespace 생성 (Rate Limiting용)
+### 4. 저장소 바인딩 확인
 
-```bash
-npx wrangler kv:namespace create RATE_LIMIT
-```
-
-출력된 `id`를 복사해서 `wrangler.toml` 파일의 주석 처리된 부분에 넣으세요:
-
-```toml
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "여기에_복사한_ID_붙여넣기"
-```
+- 요청 제한은 `RateLimiter` Durable Object가 원자적으로 처리합니다. `wrangler.toml`의 migration이 최초 배포 시 클래스를 생성하므로 별도 KV 생성이 필요하지 않습니다.
+- 응답 캐시는 `API_CACHE` KV를 사용합니다. 새 환경을 만들 때만 해당 namespace를 생성하고 `wrangler.toml`에 ID를 등록하세요.
 
 ### 5. 환경 변수 설정 (Secret)
 
@@ -68,6 +59,8 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 npm run deploy
 ```
 
+프로덕션 배포 전에는 `npm test`와 Wrangler dry-run을 먼저 실행하세요.
+
 배포가 완료되면 다음과 같은 URL이 제공됩니다:
 
 ```
@@ -94,6 +87,8 @@ curl https://reviewai-api-proxy.YOUR_SUBDOMAIN.workers.dev/health
 ```
 
 ### 토큰 발급 테스트
+
+프로덕션 앱은 Firebase App Check 토큰을 `X-Firebase-AppCheck` 헤더로 전송합니다. 로컬 curl 요청은 Worker가 `monitor` 모드일 때만 허용됩니다.
 
 ```bash
 curl -X POST https://reviewai-api-proxy.YOUR_SUBDOMAIN.workers.dev/api/auth/token \
@@ -129,7 +124,8 @@ npm run dev
 
 - ✅ **Cold Start 0초**: 전세계 엣지 네트워크에서 즉시 응답
 - ✅ **JWT 인증**: 동적 토큰 기반 보안
-- ✅ **Rate Limiting**: KV를 사용한 분산 Rate Limiting
+- ✅ **App Check**: Play Integrity/App Attest 기반 앱 진위 검증
+- ✅ **Rate Limiting**: Durable Object 트랜잭션 기반 원자적 요청 제한
 - ✅ **글로벌 배포**: 전세계 어디서나 빠른 응답
 - ✅ **무료**: 하루 10만 요청까지 무료
 
@@ -137,11 +133,20 @@ npm run dev
 
 - API 키는 환경 변수(Secret)로 안전하게 저장
 - JWT 토큰 기반 인증
-- Rate Limiting으로 남용 방지
+- Firebase App Check로 정식 앱 인스턴스 확인
+- 엔드포인트별 Rate Limiting으로 남용 방지
 - CORS 설정으로 접근 제어
+
+### App Check 단계적 적용
+
+1. Firebase Console의 App Check에서 Android 앱은 Play Integrity, iOS 앱은 App Attest를 등록합니다.
+2. 먼저 `APP_CHECK_ENFORCEMENT = "monitor"`로 배포해 `app_check_monitor` 로그의 `missing`/`invalid` 비율을 확인합니다.
+3. 정상 앱 버전 보급과 iOS 서명 프로파일의 App Attest capability 적용을 확인합니다.
+4. 미검증 요청이 충분히 감소한 후 별도 검토 PR에서 `APP_CHECK_ENFORCEMENT = "enforce"`로 전환합니다.
+
+디버그 토큰은 개발자 로컬 환경과 Firebase Console에만 등록하고 저장소에 커밋하지 마세요. `monitor` 모드는 전환 중 장애를 방지하기 위한 상태이며, 미검증 토큰 발급도 임시로 허용합니다. 이때 새로 발급되는 미검증 refresh token은 24시간으로 제한됩니다(검증 성공 시 7일).
 
 ## 📝 참고
 
 - [Cloudflare Workers 문서](https://developers.cloudflare.com/workers/)
 - [Wrangler CLI 문서](https://developers.cloudflare.com/workers/wrangler/)
-

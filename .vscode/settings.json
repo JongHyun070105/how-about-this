@@ -1,4 +1,4 @@
 {
   "java.configuration.updateBuildConfiguration": "automatic",
-  "cmake.sourceDirectory": "/Users/macintosh/reviewai_flutter/linux"
+  "cmake.sourceDirectory": "${workspaceFolder}/linux"
 }

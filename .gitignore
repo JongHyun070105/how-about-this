@@ -31,7 +31,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 coverage/
 
 # Symbolication related
@@ -48,6 +48,10 @@ app.*.map.json
 .vercel
 .kiro/
 node_modules/
+cloudflare-worker/.wrangler/
+
+# CI tool credentials and local build reports
+.github/ci-tools/node_modules/
 
 # AI 에디터 / 분석 도구
 .cursor/

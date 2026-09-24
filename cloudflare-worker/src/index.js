@@ -11,6 +11,16 @@ import {
 } from "./handlers.js";
 
 export { GeminiProxyV2 } from "./GeminiProxyV2.js";
+export { RateLimiter } from "./RateLimiter.js";
+
+function rateLimitPolicy(path) {
+  if (path === "/api/auth/token") return { bucket: "auth-token", limit: 10, windowSeconds: 15 * 60 };
+  if (path === "/api/auth/refresh") return { bucket: "auth-refresh", limit: 30, windowSeconds: 15 * 60 };
+  if (path === "/api/gemini-proxy" || path === "/api/food-insight") {
+    return { bucket: "ai", limit: 40, windowSeconds: 15 * 60 };
+  }
+  return { bucket: "api", limit: 100, windowSeconds: 15 * 60 };
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -22,13 +32,13 @@ export default {
     const path = url.pathname;
 
     const clientId = request.headers.get("CF-Connecting-IP") || "unknown";
-    const rateLimitOk = await checkRateLimit(env, clientId);
+    const rateLimit = await checkRateLimit(env, clientId, rateLimitPolicy(path));
 
-    if (!rateLimitOk) {
+    if (!rateLimit.allowed) {
       return jsonResponse(
         { error: "Too many requests", message: "Rate limit exceeded. Please try again later." },
         429,
-        CORS_HEADERS
+        { ...CORS_HEADERS, "Retry-After": String(rateLimit.retryAfter) }
       );
     }
 
@@ -48,7 +58,7 @@ export default {
       return jsonResponse({ error: "Not Found" }, 404, CORS_HEADERS);
     } catch (error) {
       console.error("Worker error:", error);
-      return jsonResponse({ error: "Internal server error", details: error.message }, 500, CORS_HEADERS);
+      return jsonResponse({ error: "Internal server error" }, 500, CORS_HEADERS);
     }
   },
 };

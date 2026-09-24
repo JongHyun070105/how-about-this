@@ -12,6 +12,10 @@ class GeminiResponseParser {
   static final RegExp _closingMarkdownFenceRegex = RegExp(r'\r?\n?```\s*$');
   static final RegExp _numberPrefixRegex = RegExp(r'^\d+\.\s*');
 
+  /// 원문 응답이나 예외 메시지를 포함하지 않는 운영용 파싱 오류 메시지입니다.
+  static String safeParseErrorMessage(Object error) =>
+      'JSON 파싱 실패 (${error.runtimeType})';
+
   /// Gemini API 응답 Map에서 텍스트를 추출합니다.
   static String? extractText(Map<String, dynamic> response) {
     final candidates = response['candidates'] as List?;
@@ -212,22 +216,14 @@ class GeminiResponseParser {
       throw Exception('Gemini API로부터 응답을 받지 못했습니다.');
     }
 
-    LoggerService.d(
-      'Raw Gemini response (first 200 chars): ${jsonString.substring(0, jsonString.length > 200 ? 200 : jsonString.length)}',
-    );
-
     final cleanedJson = _removeTrailingCommas(cleanMarkdownJson(jsonString));
-
-    LoggerService.d(
-      'Cleaned JSON for parsing (first 200 chars): ${cleanedJson.substring(0, cleanedJson.length > 200 ? 200 : cleanedJson.length)}',
-    );
 
     List<dynamic> decodedList;
     try {
       final decodedJson = jsonDecode(cleanedJson);
       decodedList = _extractRecommendationItems(decodedJson);
     } catch (e, stack) {
-      LoggerService.e('JSON 파싱 실패: $e\nRaw: $cleanedJson', e, stack);
+      LoggerService.e(safeParseErrorMessage(e), null, stack);
       throw Exception('추천 데이터를 분석하는 중 문제가 발생했습니다. 다시 시도해 주세요.');
     }
 

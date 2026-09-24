@@ -38,7 +38,8 @@
 
 ### 🔒 보안 및 인증
 - **JWT 기반 인증**: Cloudflare Workers를 통한 동적 토큰 관리
-- **Rate Limiting**: 15분당 100회 요청 제한으로 과도한 API 호출 방지
+- **Firebase App Check**: Play Integrity/App Attest 토큰을 통한 앱 진위 검증
+- **Rate Limiting**: Durable Object 기반 엔드포인트별 요청 제한
 - **안전한 토큰 저장**: flutter_secure_storage를 활용한 로컬 토큰 암호화 저장
 - **서버 시간 동기화**: 시스템 시간 조작 방지를 위한 서버 시간 검증
 
@@ -53,7 +54,7 @@
 ### Backend & Infrastructure
 - **API Proxy**: Cloudflare Workers (Durable Objects 활용)
 - **인증**: JWT (HS256)
-- **Rate Limiting**: Cloudflare KV Store
+- **Rate Limiting**: Cloudflare Durable Objects
 
 ### AI & External APIs
 - **AI 모델**: Google Gemini API (gemini-3.5-flash-lite)
