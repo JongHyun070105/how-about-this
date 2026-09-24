@@ -53,19 +53,33 @@ class AuthService {
   static String? _deviceId;
   static String? _cachedAppVersion;
   static String? _cachedDeviceInfo;
+  static Future<String>? _inFlightTokenRequest;
 
-  /// 유효한 액세스 토큰을 반환 (자동 갱신 포함)
-  static Future<String> getValidAccessToken() async {
+  /// 유효한 액세스 토큰을 반환 (자동 갱신 포함, 동시 요청 중복 방지)
+  static Future<String> getValidAccessToken() {
+    if (_cachedAccessToken != null &&
+        _tokenExpiry != null &&
+        DateTime.now().isBefore(
+          _tokenExpiry!.subtract(const Duration(minutes: 1)),
+        )) {
+      _debugLog('Using cached access token');
+      return Future.value(_cachedAccessToken!);
+    }
+
+    if (_inFlightTokenRequest != null) {
+      _debugLog('Awaiting existing in-flight token request');
+      return _inFlightTokenRequest!;
+    }
+
+    final request = _fetchOrRefreshToken();
+    _inFlightTokenRequest = request;
+    return request.whenComplete(() {
+      _inFlightTokenRequest = null;
+    });
+  }
+
+  static Future<String> _fetchOrRefreshToken() async {
     try {
-      if (_cachedAccessToken != null &&
-          _tokenExpiry != null &&
-          DateTime.now().isBefore(
-            _tokenExpiry!.subtract(const Duration(minutes: 1)),
-          )) {
-        _debugLog('Using cached access token');
-        return _cachedAccessToken!;
-      }
-
       // 리프레시 토큰으로 새 액세스 토큰 발급 시도
       if (_cachedRefreshToken != null) {
         try {
@@ -262,6 +276,7 @@ class AuthService {
     _cachedAccessToken = null;
     _cachedRefreshToken = null;
     _tokenExpiry = null;
+    _inFlightTokenRequest = null;
   }
 
   /// 디바이스 ID 가져오기 또는 생성
@@ -353,6 +368,7 @@ class AuthService {
     _cachedAccessToken = accessToken;
     _cachedRefreshToken = refreshToken;
     _tokenExpiry = expiry;
+    _inFlightTokenRequest = null;
   }
 }
 

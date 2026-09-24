@@ -225,5 +225,28 @@ void main() {
         ),
       );
     });
+
+    test('searchCache는 50개 항목을 초과하지 않고 가장 오래된 항목을 제거해야 함', () async {
+      mockDio.mockResponse = Response(
+        requestOptions: RequestOptions(path: '/api/kakao-local'),
+        statusCode: 200,
+        data: testResponseData,
+      );
+
+      for (int i = 0; i < 55; i++) {
+        await kakaoApiService.searchPlaces(
+          RestaurantSearchParams(
+            query: '음식_$i',
+            latitude: 37.0 + (i * 0.001),
+            longitude: 127.0,
+          ),
+        );
+      }
+
+      expect(kakaoApiService.searchCache.length, lessThanOrEqualTo(50));
+      // 가장 처음 들어갔던 0번은 퇴출되어 캐시에 없어야 함
+      const firstKey = '음식_0_37.0_127.0_none';
+      expect(kakaoApiService.searchCache.containsKey(firstKey), isFalse);
+    });
   });
 }

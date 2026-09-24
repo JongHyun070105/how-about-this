@@ -21,6 +21,9 @@ class ApiProxyService {
   @visibleForTesting
   static void clearImageCache() => _imageMemoryCache.clear();
 
+  /// 특정 이미지 캐시 항목 즉시 제거 (메모리 최적화)
+  static void evictImage(String path) => _imageMemoryCache.remove(path);
+
   final http.Client _client;
   final String _proxyUrl;
   final Future<String?> Function()? _tokenProvider;
@@ -74,20 +77,28 @@ class ApiProxyService {
         // JSON 파싱 시도
         try {
           final errorData = jsonDecode(responseBody);
-          throw GeminiApiException(
-            errorData['details'] ?? errorData['error'] ?? 'API 호출 실패',
-            statusCode: response.statusCode,
-          );
-        } catch (e) {
-          // JSON 파싱 실패 시 로그만 남기고 사용자에게는 일반 메시지
-          LoggerService.w(
-            'API Error Response (non-JSON): ${responseBody.length > 100 ? responseBody.substring(0, 100) : responseBody}',
-          );
-          throw GeminiApiException(
-            'API 서버 응답 오류가 발생했습니다.',
-            statusCode: response.statusCode,
-          );
+          if (errorData is Map) {
+            final message =
+                errorData['message'] ??
+                errorData['details'] ??
+                errorData['error'];
+            if (message != null) {
+              throw GeminiApiException(
+                message.toString(),
+                statusCode: response.statusCode,
+              );
+            }
+          }
+        } on FormatException {
+          // JSON 형식이 아닌 경우 fallback 처리로 진행
         }
+        LoggerService.w(
+          'API Error Response (non-JSON): ${responseBody.length > 100 ? responseBody.substring(0, 100) : responseBody}',
+        );
+        throw GeminiApiException(
+          'API 서버 응답 오류가 발생했습니다.',
+          statusCode: response.statusCode,
+        );
       }
     } on TimeoutException {
       throw NetworkException('요청 시간이 초과되었습니다.');
@@ -305,6 +316,12 @@ class ApiProxyService {
     }
     final base64 = base64Encode(bytes);
     final result = (bytes: bytes, base64: base64);
+
+    // 캐시 용량 초과 시 가장 오래된 항목 제거 (메모리 누수 방지)
+    const int maxCacheEntries = 10;
+    if (_imageMemoryCache.length >= maxCacheEntries) {
+      _imageMemoryCache.remove(_imageMemoryCache.keys.first);
+    }
     _imageMemoryCache[path] = result;
     return result;
   }

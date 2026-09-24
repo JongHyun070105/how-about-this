@@ -4,8 +4,8 @@ import test from "node:test";
 import { GeminiProxyV2 } from "../src/GeminiProxyV2.js";
 import { RateLimiter } from "../src/RateLimiter.js";
 import { verifyFirebaseAppCheckToken } from "../src/appCheck.js";
-import { handleTokenGeneration } from "../src/handlers.js";
-import { checkRateLimit, generateJWT, isVersionAtLeast, verifyJWT } from "../src/utils.js";
+import { handleTokenGeneration, handleKakaoLocalProxy, handleWeatherProxy } from "../src/handlers.js";
+import { CORS_HEADERS, SECURITY_HEADERS, checkRateLimit, generateJWT, isVersionAtLeast, verifyJWT } from "../src/utils.js";
 import {
   normalizeGeminiRequest,
   readJsonWithLimit,
@@ -402,3 +402,76 @@ test("Gemini proxy does not return upstream diagnostic bodies", { concurrency: f
     globalThis.fetch = originalFetch;
   }
 });
+
+test("SECURITY_HEADERS and CORS_HEADERS include standard security headers", () => {
+  assert.equal(SECURITY_HEADERS["X-Content-Type-Options"], "nosniff");
+  assert.equal(SECURITY_HEADERS["X-Frame-Options"], "DENY");
+  assert.ok(SECURITY_HEADERS["Strict-Transport-Security"].includes("max-age"));
+  assert.equal(SECURITY_HEADERS["Referrer-Policy"], "strict-origin-when-cross-origin");
+  assert.ok(SECURITY_HEADERS["Content-Security-Policy"].includes("default-src 'none'"));
+
+  assert.equal(CORS_HEADERS["X-Content-Type-Options"], "nosniff");
+  assert.equal(CORS_HEADERS["X-Frame-Options"], "DENY");
+});
+
+test("Gemini proxy uses x-goog-api-key header and strips API key from URL", { concurrency: false }, async () => {
+  let capturedUrl = null;
+  let capturedHeaders = null;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    capturedUrl = url;
+    capturedHeaders = options.headers;
+    return new Response(JSON.stringify({ candidates: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const proxy = new GeminiProxyV2({}, { GEMINI_API_KEY: "secret-gemini-key-123" });
+    const response = await proxy.fetch(new Request("https://worker.test/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "generateContent",
+        requestBody: { contents: [{ parts: [{ text: "안전한 프록시 테스트" }] }] },
+      }),
+    }));
+    assert.equal(response.status, 200);
+    assert.ok(capturedUrl, "Fetch was called");
+    assert.ok(!capturedUrl.includes("key="), "URL must not contain API key");
+    assert.ok(!capturedUrl.includes("secret-gemini-key-123"), "URL must not contain secret");
+    assert.equal(capturedHeaders["x-goog-api-key"], "secret-gemini-key-123", "API key must be sent via x-goog-api-key header");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Kakao and Weather proxies reject invalid or out-of-range coordinates", async () => {
+  const token = await generateJWT(
+    { deviceId: "device1", deviceHash: "hash1", type: "access" },
+    SECRET,
+    3600,
+  );
+  const authHeader = { Authorization: `Bearer ${token}` };
+
+  // Kakao: out-of-range latitude
+  const badLatReq = new Request("https://worker.test/api/kakao-local?query=pizza&x=127.0&y=999", {
+    headers: authHeader,
+  });
+  const badLatRes = await handleKakaoLocalProxy(badLatReq, { JWT_SECRET: SECRET });
+  assert.equal(badLatRes.status, 400);
+
+  // Kakao: query too long
+  const longQuery = "a".repeat(101);
+  const badQueryReq = new Request(`https://worker.test/api/kakao-local?query=${longQuery}&x=127.0&y=37.5`, {
+    headers: authHeader,
+  });
+  const badQueryRes = await handleKakaoLocalProxy(badQueryReq, { JWT_SECRET: SECRET });
+  assert.equal(badQueryRes.status, 400);
+
+  // Weather: out-of-range longitude
+  const badWeatherReq = new Request("https://worker.test/weather?lat=37.5&lon=250", {
+    headers: authHeader,
+  });
+  const badWeatherRes = await handleWeatherProxy(badWeatherReq, { JWT_SECRET: SECRET });
+  assert.equal(badWeatherRes.status, 400);
+});
+
+

@@ -72,7 +72,11 @@ class KakaoApiService {
 
         final searchResponse = KakaoSearchResponse.fromJson(response.data);
 
-        // 캐시 저장
+        // 캐시 저장 (메모리 누수 방지를 위한 용량 상한 관리)
+        const int maxCacheEntries = 50;
+        if (searchCache.length >= maxCacheEntries) {
+          searchCache.remove(searchCache.keys.first);
+        }
         searchCache[cacheKey] = CachedSearchResult(
           response: searchResponse,
           timestamp: DateTime.now(),
