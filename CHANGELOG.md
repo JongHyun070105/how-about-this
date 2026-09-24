@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.15.0](https://github.com/JongHyun070105/how-about-this/compare/v1.14.0...v1.15.0) (2026-09-24)
+
+
+### Features
+
+* Add Gemini AI release notes generation to CI/CD & remove unused Cloudflare staging worker ([678685e](https://github.com/JongHyun070105/how-about-this/commit/678685e67994ab76e5a0fba5bc3b7f547286dac0))
+* add platform attestation and atomic rate limits ([#119](https://github.com/JongHyun070105/how-about-this/issues/119)) ([321c92e](https://github.com/JongHyun070105/how-about-this/commit/321c92e810289ba6c5b02779bfc683a3f1720e1f))
+* Gemini 3.5 Flash-Lite 모델 전환 및 보안/버그 패치 (v1.8.2) ([f54c936](https://github.com/JongHyun070105/how-about-this/commit/f54c936794b4b3bcbd264809cd57a8aa925b6747))
+* **security:** harden API proxy, sanitize prompt inputs, and optimize memory caches ([ca02704](https://github.com/JongHyun070105/how-about-this/commit/ca02704bdbdedb6a76ba9bb7d27ad790774947ab))
+* 광고 시청 중 AI 리뷰 병렬 사전생성(Prefetch) 및 리뷰 선택 카드 모던 리디자인 ([e06a747](https://github.com/JongHyun070105/how-about-this/commit/e06a747e6f33b7f6f12323ca568e64a6ed844a66))
+* 추천 다이얼로그 좋아요 선택 시 근처 음식점 검색 화면 자동 이동 연동 ([237d9ef](https://github.com/JongHyun070105/how-about-this/commit/237d9ef1dcafef5af62aac674d955cec0e504758))
+
+
+### Bug Fixes
+
+* Android 15+ 16 KB 메모리 페이지 크기 지원 (rootbeer-lib 최신화) ([#106](https://github.com/JongHyun070105/how-about-this/issues/106)) ([d5fe8a8](https://github.com/JongHyun070105/how-about-this/commit/d5fe8a8bc19a3aae6b949d8f65bc8346835157a7))
+* **android:** Support 16 KB page sizes for Android 15+ by updating rootbeer-lib to 0.1.1 ([5bb6699](https://github.com/JongHyun070105/how-about-this/commit/5bb66995c5aeceb4ae523fef33eb16240cb0434a))
+* CI/CD Fastlane Play Store en-US 메타데이터 오류 해결 및 개인맞춤형 선호도 정합성 보완 ([1c45815](https://github.com/JongHyun070105/how-about-this/commit/1c45815fceeb5608158358ca902e0a3ac260c4af))
+* **ci:** pin bundled Wrangler action ([#127](https://github.com/JongHyun070105/how-about-this/issues/127)) ([9801d7f](https://github.com/JongHyun070105/how-about-this/commit/9801d7f1342dee6bf28aba8ab33eb07362179c2c))
+* **ci:** restore compatible dependencies for firebase-tools ([1e338ce](https://github.com/JongHyun070105/how-about-this/commit/1e338cec4b849e83b2195fa2e42829b2bedc86f9))
+* **ci:** restore compatible dependencies for firebase-tools ([860ff99](https://github.com/JongHyun070105/how-about-this/commit/860ff990d9813ff27d713c4159e8248d91b00340))
+* Resolve image validation false-positive, remove info tip button, and clean button spinner ([93cdb2b](https://github.com/JongHyun070105/how-about-this/commit/93cdb2b0a377f40e5a21899cdf265d53c770d0a6))
+* **security:** harden request and release pipelines ([#125](https://github.com/JongHyun070105/how-about-this/issues/125)) ([d6df3f4](https://github.com/JongHyun070105/how-about-this/commit/d6df3f41e4d0e2de5f8cc527bd290d50f5cc4570))
+* 추천 다이얼로그 pop 전 Navigator 인스턴스 사전 참조 확보로 안전한 화면 전환 보장 ([5963600](https://github.com/JongHyun070105/how-about-this/commit/596360084f973c49e39ca1d2620131b9dd79048d))
+
 ## [1.14.0](https://github.com/JongHyun070105/how-about-this/compare/v1.13.0...v1.14.0) (2026-07-12)
 
 
