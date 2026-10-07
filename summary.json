@@ -66,9 +66,9 @@
   "ci": {
     "workflow": "cicd.yml",
     "status": "completed",
-    "conclusion": "success"
+    "conclusion": "failure"
   },
-  "generatedAt": "2026-10-06T10:12:01.643Z",
+  "generatedAt": "2026-10-07T10:11:01.597Z",
   "configuration": {
     "themes": [
       "coral-day",
