@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-16T13:38:32.645Z",
+  "environment": {
+    "node": "v26.11.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro"
+  },
+  "baseline": "860ff990d9813ff27d713c4159e8248d91b00340",
+  "measuredHead": "860ff990d9813ff27d713c4159e8248d91b00340",
+  "dirty": true,
+  "jwt": {
+    "iterationsPerSample": 5000,
+    "sampleCount": 7,
+    "warmupPerVariant": 500,
+    "samplesMs": {
+      "baseline": [
+        101.851916,
+        102.75175000000002,
+        108.24537500000002,
+        97.65099999999995,
+        92.26658299999997,
+        96.19316700000013,
+        93.64070900000002
+      ],
+      "optimized": [
+        75.79858299999998,
+        75.65229099999999,
+        73.983834,
+        72.99025000000006,
+        71.26070799999991,
+        75.02604199999996,
+        71.50350000000003
+      ]
+    },
+    "medianBeforeMs": 97.65099999999995,
+    "medianAfterMs": 73.983834,
+    "latencyReductionPercent": 24.236480937215145,
+    "throughputMultiplier": 1.319896451973548,
+    "imports": {
+      "baseline": {
+        "sign": 1,
+        "verifications": 1000,
+        "keyImports": 1001
+      },
+      "optimized": {
+        "sign": 1,
+        "verifications": 1000,
+        "keyImports": 1
+      }
+    }
+  },
+  "rateLimiter": {
+    "baseline": {
+      "accepted": 1000,
+      "rejected": 1,
+      "get": 1001,
+      "put": 1000,
+      "setAlarm": 1000,
+      "writes": 2000
+    },
+    "optimized": {
+      "accepted": 1000,
+      "rejected": 1,
+      "get": 1001,
+      "put": 1000,
+      "setAlarm": 1,
+      "writes": 1001
+    }
+  },
+  "limits": "Local Node microbenchmark; storage is a counting double. Not end-to-end latency, Cloudflare billing, or a device frame-rate measurement."
+}

@@ -39,7 +39,8 @@ export class RateLimiter {
     let result;
     const updateWindow = async (storage) => {
       const current = await storage.get(STATE_KEY);
-      const windowState = !current || now >= current.resetAt
+      const newWindow = !current || now >= current.resetAt;
+      const windowState = newWindow
         ? { count: 0, resetAt: now + windowSeconds * 1000 }
         : current;
 
@@ -54,6 +55,7 @@ export class RateLimiter {
 
       windowState.count += 1;
       await storage.put(STATE_KEY, windowState);
+      if (newWindow) await storage.setAlarm(windowState.resetAt);
       result = {
         allowed: true,
         remaining: Math.max(0, limit - windowState.count),
@@ -66,10 +68,6 @@ export class RateLimiter {
       await this.storage.transaction(updateWindow);
     } else {
       await updateWindow(this.storage);
-    }
-
-    if (result.allowed) {
-      await this.storage.setAlarm(result.resetAt);
     }
 
     const headers = {
@@ -90,6 +88,14 @@ export class RateLimiter {
   }
 
   async alarm() {
-    await this.storage.deleteAll();
+    // Storage input gates isolate this read/cleanup sequence. deleteAll() cannot
+    // be called inside an explicit transaction in the Workers runtime.
+    const current = await this.storage.get(STATE_KEY);
+    // A previous window's alarm can arrive after a request starts a new one.
+    if (current && Date.now() < current.resetAt) {
+      await this.storage.setAlarm(current.resetAt);
+    } else {
+      await this.storage.deleteAll();
+    }
   }
 }
