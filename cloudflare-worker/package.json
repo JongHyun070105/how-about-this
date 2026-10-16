@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "wrangler dev --env production",
     "deploy": "wrangler deploy",
-    "test": "node --test"
+    "test": "node --test",
+    "test:runtime": "node scripts/runtime-check.js",
+    "benchmark": "node benchmark/hot-paths.js"
   },
   "devDependencies": {
-    "wrangler": "4.136.2"
+    "wrangler": "4.151.1"
   }
 }

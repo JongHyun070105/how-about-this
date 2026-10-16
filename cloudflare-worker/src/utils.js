@@ -89,9 +89,28 @@ export function isVersionAtLeast(version, minimum) {
   return true;
 }
 
+const encoder = new TextEncoder();
+// One key per isolate: bounded retention, including when a deployment rotates secrets.
+// Cache the in-flight import as well so concurrent requests share the same work.
+let signingKeySecret;
+let signingKeyPromise;
+
+function getSigningKey(secret) {
+  if (signingKeyPromise && signingKeySecret === secret) return signingKeyPromise;
+  const pending = crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  signingKeySecret = secret;
+  signingKeyPromise = pending;
+  pending.catch(() => {
+    if (signingKeyPromise === pending) {
+      signingKeyPromise = undefined;
+      signingKeySecret = undefined;
+    }
+  });
+  return pending;
+}
+
 async function sign(message, secret) {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const key = await getSigningKey(secret);
   const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
   return base64urlEncode(new Uint8Array(signature));
 }

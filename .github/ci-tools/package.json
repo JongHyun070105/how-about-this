@@ -2,7 +2,7 @@
   "name": "reviewai-ci-tools",
   "private": true,
   "devDependencies": {
-    "firebase-tools": "15.30.2"
+    "firebase-tools": "15.34.0"
   },
   "overrides": {
     "@opentelemetry/core": "^2.8.0",

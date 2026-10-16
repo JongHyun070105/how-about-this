@@ -13,6 +13,11 @@ import { assessAppCheckRequest } from "./appCheck.js";
 const JWT_EXPIRES_IN = 3600;
 const REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 3600;
 const UNVERIFIED_REFRESH_TOKEN_EXPIRES_IN = 24 * 3600;
+const KAKAO_CATEGORY_CODES = new Set([
+  "MT1", "CS2", "PS3", "SC4", "AC5", "PK6", "OL7", "SW8",
+  "BK9", "CT1", "AG2", "PO3", "AT4", "AD5", "FD6", "CE7",
+  "HP8", "PM9",
+]);
 
 export async function handleTokenGeneration(request, env) {
   const appCheck = await assessAppCheckRequest(request, env);
@@ -119,15 +124,20 @@ export async function handleKakaoLocalProxy(request, env, ctx) {
     !Number.isFinite(numY) || numY < -90 || numY > 90 ||
     !Number.isInteger(numRadius) || numRadius < 1 || numRadius > 20000 ||
     !Number.isInteger(numPage) || numPage < 1 || numPage > 45 ||
-    !Number.isInteger(numSize) || numSize < 1 || numSize > 45
+    !Number.isInteger(numSize) || numSize < 1 || numSize > 45 ||
+    (categoryGroupCode !== null && !KAKAO_CATEGORY_CODES.has(categoryGroupCode))
   ) {
     return jsonResponse({ error: "Invalid parameters", message: "Parameter values out of allowed range" }, 400, CORS_HEADERS);
   }
 
   try {
-    const shortX = parseFloat(x).toFixed(3);
-    const shortY = parseFloat(y).toFixed(3);
-    const cacheUrl = new URL(`https://api.reviewai.internal/kakao?q=${encodeURIComponent(query)}&x=${shortX}&y=${shortY}&r=${radius}&p=${page}&s=${size}&c=${categoryGroupCode || 'all'}`);
+    const shortX = numX.toFixed(3);
+    const shortY = numY.toFixed(3);
+    const cacheUrl = new URL("https://api.reviewai.internal/kakao");
+    cacheUrl.search = new URLSearchParams({
+      q: query, x: shortX, y: shortY, r: String(numRadius),
+      p: String(numPage), s: String(numSize), c: categoryGroupCode || "all",
+    }).toString();
     const cacheRequest = new Request(cacheUrl);
     const cache = caches.default;
     const cachedResponse = await cache.match(cacheRequest);
@@ -139,7 +149,10 @@ export async function handleKakaoLocalProxy(request, env, ctx) {
     if (!apiKey) return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
 
     const kakaoUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
-    const kakaoParams = new URLSearchParams({ query, x, y, radius, page, size, sort: "distance" });
+    const kakaoParams = new URLSearchParams({
+      query, x: String(numX), y: String(numY), radius: String(numRadius),
+      page: String(numPage), size: String(numSize), sort: "distance",
+    });
     if (categoryGroupCode) kakaoParams.append("category_group_code", categoryGroupCode);
 
     const response = await fetch(`${kakaoUrl}?${kakaoParams}`, {
@@ -182,8 +195,8 @@ export async function handleWeatherProxy(request, env, ctx) {
   }
   
   try {
-    const shortLat = parseFloat(lat).toFixed(2);
-    const shortLon = parseFloat(lon).toFixed(2);
+    const shortLat = numLat.toFixed(2);
+    const shortLon = numLon.toFixed(2);
     const cacheUrl = new URL(`https://api.reviewai.internal/weather?lat=${shortLat}&lon=${shortLon}`);
     const cacheRequest = new Request(cacheUrl);
     const cache = caches.default;
@@ -195,7 +208,10 @@ export async function handleWeatherProxy(request, env, ctx) {
     const apiKey = env.OPEN_WEATHER_MAP_API_KEY;
     if (!apiKey) return jsonResponse({ error: "API key not configured" }, 500, CORS_HEADERS);
 
-    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=kr`;
+    const weatherParams = new URLSearchParams({
+      lat: String(numLat), lon: String(numLon), appid: apiKey, units: "metric", lang: "kr",
+    });
+    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?${weatherParams}`;
     const response = await fetch(weatherUrl);
     if (!response.ok) {
       return jsonResponse({ error: "Weather API error" }, response.status, CORS_HEADERS);
