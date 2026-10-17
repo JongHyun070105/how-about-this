@@ -13,16 +13,28 @@ Cloudflare Workers를 사용한 ReviewAI API 프록시 서버입니다.
 
 ```bash
 cd cloudflare-worker
-npm install
+npm ci
+npx --no-install wrangler --version
 ```
+
+저장소에 고정된 Wrangler를 프로젝트 안에 설치합니다. 전역 설치는 필요하지 않습니다.
 
 ### 3. Wrangler 로그인
 
 ```bash
-npx wrangler login
+npx --no-install wrangler login
 ```
 
 브라우저가 열리면 Cloudflare 계정으로 로그인하세요.
+
+로그인 후 `npx --no-install wrangler whoami`로 계정을 확인할 수 있습니다.
+로그인 자체는 배포를 실행하지 않습니다. 배포 전 로컬 검증은 다음과 같습니다.
+
+```bash
+npm test
+npm run test:runtime
+npx --no-install wrangler deploy --dry-run --env production
+```
 
 ### 4. 저장소 바인딩 확인
 

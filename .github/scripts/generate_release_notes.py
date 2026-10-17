@@ -82,7 +82,12 @@ JSON 스키마:
             result = json.loads(response.read().decode("utf-8"))
             candidate = result["candidates"][0]["content"]["parts"][0]["text"]
             parsed = json.loads(candidate)
-            if "ko" in parsed and "en" in parsed:
+            # A valid JSON response can still contain non-text or blank values.
+            # Reject the entire pair so main() can safely use local notes.
+            if isinstance(parsed, dict) and all(
+                isinstance(parsed.get(locale), str) and parsed[locale].strip()
+                for locale in ("ko", "en")
+            ):
                 return parsed["ko"], parsed["en"]
     except Exception as e:
         print(f"Gemini API request failed ({type(e).__name__}); using fallback.")
