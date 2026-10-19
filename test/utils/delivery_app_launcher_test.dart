@@ -263,5 +263,39 @@ void main() {
         contains('378084485'),
       ); // 배민 iOS App Store ID
     });
+
+    testWidgets('앱 실행 가능 조회 후 실제 실행이 실패하면 스토어 안내를 표시한다', (
+      WidgetTester tester,
+    ) async {
+      DeliveryAppLauncher.mockClipboardSetter = (data) {};
+      DeliveryAppLauncher.mockCanLaunchUrl = (uri) async => true;
+      DeliveryAppLauncher.mockUrlLauncher = (uri, mode) async => false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => DeliveryAppLauncher.launch(
+                  context,
+                  mockRestaurant,
+                  currentLat: null,
+                  currentLng: null,
+                  showDeliveryAppDialog: () async => 'baemin',
+                ),
+                child: const Text('실행'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('앱 열기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('배민 앱'), findsOneWidget);
+    });
   });
 }

@@ -42,16 +42,12 @@ class LocationService {
   static const Duration _locationCacheTimeout = Duration(minutes: 5);
 
   UserLocation? _cachedLocation;
-  DateTime? _lastLocationUpdate;
+  Stopwatch? _locationCacheAge;
 
   /// 현재 위치를 가져옵니다.
   /// 캐시된 위치가 있고 유효하면 캐시를 반환합니다.
   Future<UserLocation?> getCurrentLocation() async {
     try {
-      if (_isLocationCacheValid()) {
-        return _cachedLocation;
-      }
-
       final permission = await _checkLocationPermission();
       if (permission != LocationPermissionStatus.whileInUse &&
           permission != LocationPermissionStatus.always) {
@@ -61,6 +57,10 @@ class LocationService {
       final serviceEnabled = await _isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw const LocationException('위치 서비스가 비활성화되어 있습니다.');
+      }
+
+      if (_isLocationCacheValid()) {
+        return _cachedLocation;
       }
 
       // 현재 위치 가져오기
@@ -77,7 +77,7 @@ class LocationService {
         accuracy: position.accuracy,
         timestamp: now,
       );
-      _lastLocationUpdate = now;
+      _locationCacheAge = Stopwatch()..start();
 
       return _cachedLocation;
     } on UserPermissionDeniedException {
@@ -141,19 +141,17 @@ class LocationService {
 
   /// 캐시된 위치가 유효한지 확인합니다.
   bool _isLocationCacheValid() {
-    if (_cachedLocation == null || _lastLocationUpdate == null) {
+    if (_cachedLocation == null || _locationCacheAge == null) {
       return false;
     }
 
-    final now = DateTime.now();
-    final timeDiff = now.difference(_lastLocationUpdate!);
-    return timeDiff < _locationCacheTimeout;
+    return _locationCacheAge!.elapsed < _locationCacheTimeout;
   }
 
   /// 위치 캐시를 초기화합니다.
   void clearLocationCache() {
     _cachedLocation = null;
-    _lastLocationUpdate = null;
+    _locationCacheAge = null;
   }
 
   /// 두 위치 간의 거리를 계산합니다 (미터 단위).

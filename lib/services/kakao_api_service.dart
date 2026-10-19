@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:review_ai/config/api_config.dart';
@@ -19,6 +21,7 @@ class KakaoApiService {
   // 검색 결과 캐시
   @visibleForTesting
   final Map<String, CachedSearchResult> searchCache = {};
+  final Map<String, Future<KakaoSearchResponse>> _inFlightSearches = {};
 
   KakaoApiService({Dio? dio})
     : _dio =
@@ -34,7 +37,7 @@ class KakaoApiService {
 
   /// 캐시 키 생성
   String _getCacheKey(RestaurantSearchParams params) {
-    return '${params.query}_${params.latitude}_${params.longitude}_${params.categoryGroupCode ?? "none"}';
+    return jsonEncode(params.toJson());
   }
 
   /// 키워드로 장소를 검색합니다.
@@ -51,6 +54,45 @@ class KakaoApiService {
         return cachedResult.response;
       }
 
+      final inFlightSearch = _inFlightSearches[cacheKey];
+      if (inFlightSearch != null) return await inFlightSearch;
+
+      final request = _fetchAndCache(params, cacheKey);
+      _inFlightSearches[cacheKey] = request;
+      try {
+        return await request;
+      } finally {
+        if (identical(_inFlightSearches[cacheKey], request)) {
+          _inFlightSearches.removeWhere((key, _) => key == cacheKey);
+        }
+      }
+    } on KakaoApiException {
+      rethrow;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw const KakaoApiException('네트워크 연결 시간이 초과되었습니다.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw const KakaoApiException('네트워크 연결에 실패했습니다.');
+      } else if (e.response?.statusCode == 401) {
+        throw const KakaoApiException('인증이 필요합니다. 앱을 다시 시작해주세요.');
+      } else if (e.response?.statusCode == 403) {
+        throw const KakaoApiException('API 사용 권한이 없습니다.');
+      } else if (e.response?.statusCode == 429) {
+        throw const KakaoApiException('API 호출 한도를 초과했습니다.');
+      } else {
+        throw const KakaoApiException('API 호출 중 오류가 발생했습니다.');
+      }
+    } catch (e) {
+      throw KakaoApiException(ErrorHandler.sanitizeMessage(e));
+    }
+  }
+
+  Future<KakaoSearchResponse> _fetchAndCache(
+    RestaurantSearchParams params,
+    String cacheKey,
+  ) async {
+    try {
       // 네트워크 연결 확인
       if (!await NetworkUtils.checkInternetConnectivity()) {
         throw const KakaoApiException('인터넷 연결을 확인해주세요.');

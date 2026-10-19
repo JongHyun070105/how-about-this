@@ -8,10 +8,15 @@ import 'package:review_ai/core/utils/logger_service.dart';
 /// 서버 시간 서비스 (시스템 시간 조작 방지)
 class ServerTimeService {
   static DateTime? _cachedServerTime;
-  static DateTime? _cacheTimestamp;
+  static Stopwatch? _cacheAge;
+  static Stopwatch? _failureBackoff;
+  static Future<DateTime>? _inFlightRequest;
   static int? _timeOffset; // 서버 시간 - 로컬 시간 (밀리초)
 
   static http.Client? _customClient;
+  static DateTime Function()? _mockNow;
+
+  static DateTime _now() => _mockNow?.call() ?? DateTime.now();
 
   @visibleForTesting
   static void setClientForTesting(http.Client? client) {
@@ -19,14 +24,22 @@ class ServerTimeService {
   }
 
   @visibleForTesting
+  static void setClockForTesting(DateTime Function()? clock) {
+    _mockNow = clock;
+  }
+
+  @visibleForTesting
   static Duration cacheExpiry = const Duration(minutes: 5);
 
-  /// 서버 시간 가져오기 (5분 캐싱)
+  @visibleForTesting
+  static Duration failureCacheExpiry = const Duration(seconds: 30);
+
+  /// 서버 시간을 가져옵니다 (성공 응답은 5분, 실패 응답은 30초간 캐싱).
   static Future<DateTime> getServerTime() async {
     try {
       // 캐시 확인
-      if (_cachedServerTime != null && _cacheTimestamp != null) {
-        final cacheAge = DateTime.now().difference(_cacheTimestamp!);
+      if (_cachedServerTime != null && _cacheAge != null) {
+        final cacheAge = _cacheAge!.elapsed;
         if (cacheAge < cacheExpiry) {
           // 캐시된 시간 + 경과 시간
           final serverTime = _cachedServerTime!.add(cacheAge);
@@ -35,6 +48,39 @@ class ServerTimeService {
         }
       }
 
+      final failureBackoff = _failureBackoff;
+      if (failureBackoff != null &&
+          failureBackoff.elapsed < failureCacheExpiry) {
+        return _now();
+      }
+      _failureBackoff = null;
+
+      final inFlightRequest = _inFlightRequest;
+      if (inFlightRequest != null) {
+        return inFlightRequest;
+      }
+
+      final request = _fetchServerTime();
+      _inFlightRequest = request;
+      try {
+        return await request;
+      } finally {
+        if (identical(_inFlightRequest, request)) {
+          _inFlightRequest = null;
+        }
+      }
+    } catch (e) {
+      _failureBackoff = Stopwatch()..start();
+      LoggerService.e('ServerTimeService error: $e');
+
+      // 에러 발생 시 로컬 시간 사용 (폴백)
+      LoggerService.d('Falling back to local time');
+      return _now();
+    }
+  }
+
+  static Future<DateTime> _fetchServerTime() async {
+    try {
       // 서버에서 시간 가져오기
       LoggerService.d('Fetching server time from API');
       final token = await AuthService.getValidAccessToken();
@@ -60,14 +106,15 @@ class ServerTimeService {
         final serverTimestamp = data['timestamp'] as int;
 
         final serverTime = DateTime.parse(serverTimeStr);
-        final localTime = DateTime.now();
+        final localTime = _now();
 
         // 시간 오프셋 계산 (서버 - 로컬)
         _timeOffset = serverTimestamp - localTime.millisecondsSinceEpoch;
 
         // 캐시 저장
         _cachedServerTime = serverTime;
-        _cacheTimestamp = localTime;
+        _cacheAge = Stopwatch()..start();
+        _failureBackoff = null;
 
         LoggerService.d('Server time fetched: $serverTime');
         LoggerService.d('Time offset: ${_timeOffset}ms');
@@ -77,11 +124,10 @@ class ServerTimeService {
         throw Exception('Failed to fetch server time: ${response.statusCode}');
       }
     } catch (e) {
+      _failureBackoff = Stopwatch()..start();
       LoggerService.e('ServerTimeService error: $e');
-
-      // 에러 발생 시 로컬 시간 사용 (폴백)
       LoggerService.d('Falling back to local time');
-      return DateTime.now();
+      return _now();
     }
   }
 
@@ -102,7 +148,7 @@ class ServerTimeService {
 
       final previousOffset = _timeOffset;
       final serverTime = await getServerTime();
-      final localTime = DateTime.now();
+      final localTime = _now();
       final currentOffset =
           serverTime.millisecondsSinceEpoch - localTime.millisecondsSinceEpoch;
 
@@ -125,7 +171,8 @@ class ServerTimeService {
   /// 캐시 초기화
   static void clearCache() {
     _cachedServerTime = null;
-    _cacheTimestamp = null;
+    _cacheAge = null;
+    _failureBackoff = null;
     _timeOffset = null;
     LoggerService.d('ServerTimeService cache cleared');
   }

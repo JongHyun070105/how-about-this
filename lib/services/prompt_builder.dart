@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:characters/characters.dart';
 import 'package:review_ai/services/user_preference_service.dart';
 
 /// AI 프롬프트 생성 전담 클래스
@@ -152,9 +154,7 @@ $examples
     final sanitizedFoodName = foodName
         .replaceAll(RegExp(r'[\r\n\t]+'), ' ')
         .trim();
-    final truncatedFoodName = sanitizedFoodName.length > 100
-        ? sanitizedFoodName.substring(0, 100)
-        : sanitizedFoodName;
+    final truncatedFoodName = sanitizedFoodName.characters.take(100).toString();
 
     String foodNameDescription = truncatedFoodName;
     if (truncatedFoodName.contains('아시아 음식')) {
@@ -196,12 +196,12 @@ ${foodImage != null ? '''
           '한식 예시: 김치찌개, 된장찌개, 비빔밥, 불고기, 제육볶음, 삼겹살구이, 갈비찜, 갈비탕, 냉면, 삼계탕, 순두부찌개, 육개장, 설렁탕, 감자탕, 보쌈, 족발';
     } else if (category == '중식') {
       examplesText =
-          '중식 예시: 짜장면, 짬뽕, 마라탕, 마라샹궈, 마파두부, 깐풍기, 볶음밥, 딤섬, 훠궈, 우육면, 탕수육, 양장피';
+          '중식 예시: 짜장면, 짬뽕, 마라탕, 마라샹궈, 마파두부밥, 볶음밥, 훠궈, 우육면, 양장피, 유산슬, 팔보채';
     } else if (category == '일식') {
-      examplesText = '일식 예시: 스시, 사시미, 라멘, 우동, 돈카츠, 규동, 오코노미야키, 텐동, 야키토리, 초밥';
+      examplesText = '일식 예시: 스시, 라멘, 우동, 돈카츠, 규동, 오코노미야키, 텐동, 야키소바, 카츠동, 장어덮밥';
     } else if (category == '양식') {
       examplesText =
-          '양식 예시: 까르보나라, 로제파스타, 알리오올리오, 마르게리타피자, 스테이크, 리조또, 라자냐, 감바스';
+          '양식 예시: 까르보나라, 로제파스타, 알리오올리오, 마르게리타피자, 스테이크, 리조또, 라자냐, 햄버거스테이크, 샌드위치';
     } else if (category == '분식') {
       examplesText = '분식 예시: 떡볶이, 순대, 튀김, 참치김밥, 치즈김밥, 라볶이, 쫄면, 어묵';
     } else if (category == '아시안') {

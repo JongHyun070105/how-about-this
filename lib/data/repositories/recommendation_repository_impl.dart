@@ -19,7 +19,18 @@ class RecommendationRepositoryImpl implements RecommendationRepository {
   }) async {
     // 1. 로컬 캐시 확인
     final cached = await localDataSource.getCachedRecommendations(category);
-    if (cached != null && cached.isNotEmpty) {
+    final recentFoodNames = recentFoods
+        .map((food) => food.trim().toLowerCase())
+        .toSet();
+    final cacheIncludesRecentFood =
+        cached?.any(
+          (recommendation) => recentFoodNames.contains(
+            recommendation.name.trim().toLowerCase(),
+          ),
+        ) ??
+        false;
+
+    if (cached != null && cached.isNotEmpty && !cacheIncludesRecentFood) {
       return cached
           .map(
             (m) =>

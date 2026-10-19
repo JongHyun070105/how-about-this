@@ -22,7 +22,7 @@ class ReviewViewModel extends StateNotifier<ReviewState> {
   /// 리뷰 생성의 전체 흐름을 제어하는 진입점.
   /// 작동 순서: 1. 입력 검증 -> 2. 하루 생성 제한 확인 -> 3. 이미지 적합성 검증 -> 4. 리워드 광고 시청 -> 5. AI 리뷰 생성
   Future<void> generateReviews(BuildContext context) async {
-    if (state.isLoading) return; // 이미 진행 중이면 리턴
+    if (_ref.read(reviewProvider).isLoading) return; // 이미 진행 중이면 리턴
 
     // 로딩 상태 설정 (ReviewNotifier를 통해)
     _ref.read(reviewProvider.notifier).setLoading(true);
