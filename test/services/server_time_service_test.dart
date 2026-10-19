@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -16,11 +17,14 @@ void main() {
   setUp(() {
     ServerTimeService.clearCache();
     ServerTimeService.cacheExpiry = const Duration(minutes: 5);
+    ServerTimeService.failureCacheExpiry = const Duration(seconds: 30);
+    ServerTimeService.setClockForTesting(null);
   });
 
   tearDown(() {
     ServerTimeService.clearCache();
     ServerTimeService.setClientForTesting(null);
+    ServerTimeService.setClockForTesting(null);
   });
 
   group('ServerTimeService 유닛 테스트', () {
@@ -99,6 +103,45 @@ void main() {
       );
     });
 
+    test('시간 조회 실패 후 짧은 backoff 동안 중복 서버 요청을 생략한다', () async {
+      var apiCallCount = 0;
+      final mockClient = MockClient((request) async {
+        apiCallCount++;
+        return http.Response('Server Error', 500);
+      });
+      ServerTimeService.setClientForTesting(mockClient);
+
+      await ServerTimeService.getServerTime();
+      await ServerTimeService.getServerTime();
+
+      expect(apiCallCount, 1);
+
+      ServerTimeService.failureCacheExpiry = Duration.zero;
+      await ServerTimeService.getServerTime();
+      expect(apiCallCount, 2);
+    });
+
+    test('동시에 시작한 서버 시간 조회는 진행 중 요청을 공유한다', () async {
+      var apiCallCount = 0;
+      final responseCompleter = Completer<http.Response>();
+      final mockClient = MockClient((request) {
+        apiCallCount++;
+        return responseCompleter.future;
+      });
+      ServerTimeService.setClientForTesting(mockClient);
+
+      final firstRequest = ServerTimeService.getServerTime();
+      final secondRequest = ServerTimeService.getServerTime();
+
+      await Future<void>.delayed(Duration.zero);
+      expect(apiCallCount, 1);
+
+      responseCompleter.complete(http.Response('Server Error', 500));
+      await Future.wait([firstRequest, secondRequest]);
+
+      expect(apiCallCount, 1);
+    });
+
     test('로컬 시스템 시간 조작 감지(detectTimeManipulation) 검증', () async {
       int apiCallCount = 0;
       // 첫 호출 시 offset = 0 (서버시간 == 로컬시간)
@@ -143,6 +186,30 @@ void main() {
       // 2. 오차가 10분 발생했으므로 조작 감지되어야 함 (true)
       final detectionResult = await ServerTimeService.detectTimeManipulation();
       expect(detectionResult, isTrue);
+    });
+
+    test('로컬 시계를 뒤로 돌려도 서버 캐시 시각은 뒤로 이동하지 않아야 함', () async {
+      var localTime = DateTime(2026, 10, 19, 12);
+      ServerTimeService.setClockForTesting(() => localTime);
+      var apiCallCount = 0;
+      ServerTimeService.setClientForTesting(
+        MockClient((request) async {
+          apiCallCount++;
+          return http.Response(
+            json.encode({
+              'serverTime': localTime.toIso8601String(),
+              'timestamp': localTime.millisecondsSinceEpoch,
+            }),
+            200,
+          );
+        }),
+      );
+
+      await ServerTimeService.getServerTime();
+      localTime = localTime.subtract(const Duration(minutes: 10));
+
+      expect(await ServerTimeService.detectTimeManipulation(), isTrue);
+      expect(apiCallCount, 1);
     });
 
     test('시간 조작이 없고 오차가 5분 이내일 때는 감지하지 않는지 검증', () async {

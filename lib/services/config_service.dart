@@ -27,6 +27,7 @@ class ConfigService {
   static const Duration _cacheExpiry = Duration(hours: 24);
 
   static Map<String, dynamic>? _cachedConfig;
+  static int? _cachedConfigTimeMs;
   static SharedPreferences? _prefs;
 
   // 기본 Clarity ID (서버에서 가져오기 전 폴백)
@@ -43,9 +44,16 @@ class ConfigService {
   static Future<Map<String, dynamic>> getAdMobConfig() async {
     try {
       // 캐시된 설정 확인
-      if (_cachedConfig != null) {
-        LoggerService.d('Using cached AdMob config');
-        return _cachedConfig!;
+      final cachedConfig = _cachedConfig;
+      final cachedConfigTime = _cachedConfigTimeMs;
+      if (cachedConfig != null && cachedConfigTime != null) {
+        final cacheAge = _nowMs() - cachedConfigTime;
+        if (cacheAge >= 0 && cacheAge < _cacheExpiry.inMilliseconds) {
+          LoggerService.d('Using cached AdMob config');
+          return cachedConfig;
+        }
+        _cachedConfig = null;
+        _cachedConfigTimeMs = null;
       }
 
       // 로컬 캐시 확인
@@ -55,11 +63,12 @@ class ConfigService {
 
       if (cachedData != null && cachedTime != null) {
         final cacheAge = _nowMs() - cachedTime;
-        if (cacheAge < _cacheExpiry.inMilliseconds) {
+        if (cacheAge >= 0 && cacheAge < _cacheExpiry.inMilliseconds) {
           final decodedCache = jsonDecode(cachedData);
           // firebase 블록이 없다면 구버전 캐시이므로 무시하고 다시 가져옴
           if (decodedCache['firebase'] != null) {
             _cachedConfig = decodedCache;
+            _cachedConfigTimeMs = cachedTime;
             LoggerService.i('Loaded AdMob config from local cache');
             return _cachedConfig!;
           } else {
@@ -78,10 +87,12 @@ class ConfigService {
         final config = jsonDecode(response.body);
 
         // 캐시 저장
+        final fetchedAt = _nowMs();
         await prefs.setString(_cacheKey, response.body);
-        await prefs.setInt(_cacheTimeKey, _nowMs());
+        await prefs.setInt(_cacheTimeKey, fetchedAt);
 
         _cachedConfig = config;
+        _cachedConfigTimeMs = fetchedAt;
         LoggerService.d('AdMob config fetched and cached');
         return config;
       }
@@ -222,6 +233,7 @@ class ConfigService {
       await prefs.remove(_cacheKey);
       await prefs.remove(_cacheTimeKey);
       _cachedConfig = null;
+      _cachedConfigTimeMs = null;
       LoggerService.d('ConfigService cache cleared');
     } catch (e, stack) {
       LoggerService.e('Error clearing config cache: $e', e, stack);
@@ -232,6 +244,7 @@ class ConfigService {
   @visibleForTesting
   static void resetInMemoryCache() {
     _cachedConfig = null;
+    _cachedConfigTimeMs = null;
     _prefs = null;
   }
 }

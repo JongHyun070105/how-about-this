@@ -48,7 +48,10 @@ class _RestaurantSearchScreenState
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (_) => setState(() => _isBannerAdLoaded = true),
+        onAdLoaded: (_) {
+          if (!mounted) return;
+          setState(() => _isBannerAdLoaded = true);
+        },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
           LoggerService.e(

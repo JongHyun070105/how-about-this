@@ -82,6 +82,8 @@
 
 - Flutter SDK 설치 ([공식 문서](https://flutter.dev/docs/get-started/install))
 - Android Studio 또는 VS Code (Flutter/Dart 플러그인 설치)
+- Android SDK Manager에서 Android SDK Command-line Tools 설치 및 라이선스 확인 (`flutter doctor --android-licenses`)
+- Android 빌드용 JDK 17 설치 (저장소 CI도 Java 17을 사용하며, Flutter가 선택한 버전은 `flutter doctor -v`에서 확인). 여러 JDK가 있으면 `flutter config --jdk-dir=/absolute/path/to/jdk-17`처럼 절대 경로로 Flutter에 지정
 - `.env` 파일 설정 (프로젝트 루트에 `.env` 파일을 생성하고 `GEMINI_API_KEY` 및 `KAKAO_API_KEY`, `OPEN_WEATHER_MAP_API_KEY`, `APP_ENVIRONMENT` 설정)
 
 ### 2. 의존성 설치

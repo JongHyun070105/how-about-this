@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:dio/dio.dart';
@@ -13,6 +16,7 @@ class MockDio extends Mock implements Dio {
   Options? lastOptions;
 
   Response? mockResponse;
+  Completer<Response>? responseCompleter;
   Object? mockError;
 
   @override
@@ -31,6 +35,21 @@ class MockDio extends Mock implements Dio {
 
     if (mockError != null) {
       throw mockError!;
+    }
+
+    final pendingResponse = responseCompleter;
+    if (pendingResponse != null) {
+      final res = await pendingResponse.future;
+      return Response<T>(
+        data: res.data as T?,
+        headers: res.headers,
+        requestOptions: res.requestOptions,
+        isRedirect: res.isRedirect,
+        statusCode: res.statusCode,
+        statusMessage: res.statusMessage,
+        redirects: res.redirects,
+        extra: res.extra,
+      );
     }
 
     final res = mockResponse;
@@ -117,6 +136,34 @@ void main() {
       expect(mockDio.getCallCount, initialGetCalls); // 캐시 적용되어 추가 Dio 호출 없음
     });
 
+    test('동일한 검색이 진행 중이면 하나의 네트워크 요청을 공유한다', () async {
+      final responseCompleter = Completer<Response>();
+      mockDio.responseCompleter = responseCompleter;
+      const params = RestaurantSearchParams(
+        query: '김치찌개',
+        latitude: 37.497942,
+        longitude: 127.027610,
+      );
+
+      final firstSearch = kakaoApiService.searchPlaces(params);
+      final secondSearch = kakaoApiService.searchPlaces(params);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(mockDio.getCallCount, 1);
+      responseCompleter.complete(
+        Response(
+          requestOptions: RequestOptions(path: '/api/kakao-local'),
+          statusCode: 200,
+          data: testResponseData,
+        ),
+      );
+
+      final results = await Future.wait([firstSearch, secondSearch]);
+      expect(results[0].documents.single.id, '12345');
+      expect(results[1].documents.single.id, '12345');
+      expect(mockDio.getCallCount, 1);
+    });
+
     test('캐시 유효기간(5분)이 지난 뒤 검색하면 캐시를 파기하고 다시 API를 조회한다', () async {
       mockDio.mockResponse = Response(
         requestOptions: RequestOptions(path: '/api/kakao-local'),
@@ -135,7 +182,7 @@ void main() {
       expect(mockDio.getCallCount, 1);
 
       // 2. 캐시 강제 만료 처리 (6분 전 시각으로 캐시 타임스탬프 조작)
-      const cacheKey = '짬뽕_37.497942_127.02761_none';
+      final cacheKey = kakaoApiService.searchCache.keys.single;
       expect(kakaoApiService.searchCache.containsKey(cacheKey), isTrue);
 
       final originalResponse = kakaoApiService.searchCache[cacheKey]!.response;
@@ -245,8 +292,47 @@ void main() {
 
       expect(kakaoApiService.searchCache.length, lessThanOrEqualTo(50));
       // 가장 처음 들어갔던 0번은 퇴출되어 캐시에 없어야 함
-      const firstKey = '음식_0_37.0_127.0_none';
-      expect(kakaoApiService.searchCache.containsKey(firstKey), isFalse);
+      final cachedQueries = kakaoApiService.searchCache.keys
+          .map((key) => (jsonDecode(key) as Map<String, dynamic>)['query'])
+          .toSet();
+      expect(cachedQueries.contains('음식_0'), isFalse);
+    });
+
+    test('페이지나 검색 반경이 다른 요청에는 별도 캐시 항목을 사용한다', () async {
+      mockDio.mockResponse = Response(
+        requestOptions: RequestOptions(path: '/api/kakao-local'),
+        statusCode: 200,
+        data: testResponseData,
+      );
+
+      const firstPage = RestaurantSearchParams(
+        query: '김치찌개',
+        latitude: 37.497942,
+        longitude: 127.027610,
+        radius: 1000,
+        page: 1,
+      );
+      const secondPage = RestaurantSearchParams(
+        query: '김치찌개',
+        latitude: 37.497942,
+        longitude: 127.027610,
+        radius: 1000,
+        page: 2,
+      );
+      const widerRadius = RestaurantSearchParams(
+        query: '김치찌개',
+        latitude: 37.497942,
+        longitude: 127.027610,
+        radius: 2000,
+        page: 1,
+      );
+
+      await kakaoApiService.searchPlaces(firstPage);
+      await kakaoApiService.searchPlaces(secondPage);
+      await kakaoApiService.searchPlaces(widerRadius);
+
+      expect(mockDio.getCallCount, 3);
+      expect(kakaoApiService.searchCache, hasLength(3));
     });
   });
 }
