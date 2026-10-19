@@ -131,6 +131,41 @@ void main() {
       await locationService.getCurrentLocation();
       expect(gpsCallCount, equals(2));
     });
+
+    test('캐시된 위치가 있어도 권한이 철회되면 위치를 반환하지 않아야 함', () async {
+      LocationService.mockCheckPermission = () async =>
+          LocationPermission.whileInUse;
+      LocationService.mockIsLocationServiceEnabled = () async => true;
+      LocationService.mockGetCurrentPosition = (accuracy, timeout) async {
+        return createMockPosition(latitude: 37.5665, longitude: 126.9780);
+      };
+
+      await locationService.getCurrentLocation();
+      LocationService.mockCheckPermission = () async =>
+          LocationPermission.denied;
+
+      expect(
+        () => locationService.getCurrentLocation(),
+        throwsA(isA<UserPermissionDeniedException>()),
+      );
+    });
+
+    test('위치 서비스가 꺼져 있으면 캐시된 위치도 반환하지 않아야 함', () async {
+      LocationService.mockCheckPermission = () async =>
+          LocationPermission.whileInUse;
+      LocationService.mockIsLocationServiceEnabled = () async => true;
+      LocationService.mockGetCurrentPosition = (accuracy, timeout) async {
+        return createMockPosition(latitude: 37.5665, longitude: 126.9780);
+      };
+
+      await locationService.getCurrentLocation();
+      LocationService.mockIsLocationServiceEnabled = () async => false;
+
+      expect(
+        () => locationService.getCurrentLocation(),
+        throwsA(isA<LocationException>()),
+      );
+    });
   });
 
   group('LocationService - 기타 유틸 메소드 및 설정 이동 테스트', () {

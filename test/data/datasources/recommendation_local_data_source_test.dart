@@ -74,6 +74,26 @@ void main() {
       },
     );
 
+    test(
+      'getCachedRecommendations clears entries with malformed expiry',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          key: jsonEncode({
+            'category': category,
+            'data': recommendations.map((e) => e.toJson()).toList(),
+          }),
+          expiryKey: 'not-a-date',
+        });
+
+        final result = await dataSource.getCachedRecommendations(category);
+
+        expect(result, isNull);
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString(key), isNull);
+        expect(prefs.getString(expiryKey), isNull);
+      },
+    );
+
     test('cacheRecommendations stores data correctly', () async {
       SharedPreferences.setMockInitialValues({});
 

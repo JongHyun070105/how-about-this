@@ -124,9 +124,11 @@ abstract class DeliveryAppLauncher {
       try {
         final uri = Uri.parse(urlScheme);
         if (await _canLaunch(uri)) {
-          await _launch(uri, mode: LaunchMode.externalApplication);
-          launchSuccess = true;
-          break;
+          launchSuccess = await _launch(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (launchSuccess) break;
         }
       } catch (_) {
         continue;

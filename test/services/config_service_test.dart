@@ -93,6 +93,31 @@ void main() {
       expect(apiCallCount, equals(0));
     });
 
+    test('메모리 설정 캐시도 24시간 후 서버 설정으로 갱신한다', () async {
+      SharedPreferences.setMockInitialValues({});
+      final initialTime = DateTime.now().millisecondsSinceEpoch;
+      ConfigService.mockTimeMs = initialTime;
+      var apiCallCount = 0;
+      ConfigService.mockClient = MockClient((request) async {
+        apiCallCount++;
+        final response = Map<String, dynamic>.from(mockServerResponse);
+        response['clarityProjectId'] = apiCallCount == 1
+            ? 'first_config'
+            : 'refreshed_config';
+        return http.Response(jsonEncode(response), 200);
+      });
+
+      final firstConfig = await ConfigService.getAdMobConfig();
+      expect(firstConfig['clarityProjectId'], 'first_config');
+
+      ConfigService.mockTimeMs =
+          initialTime + const Duration(hours: 25).inMilliseconds;
+      final refreshedConfig = await ConfigService.getAdMobConfig();
+
+      expect(refreshedConfig['clarityProjectId'], 'refreshed_config');
+      expect(apiCallCount, 2);
+    });
+
     test('캐시 유효시간(24시간)이 지난 경우 캐시를 무시하고 서버 API를 재호출해야 함', () async {
       final initialTime = DateTime.now().millisecondsSinceEpoch;
       SharedPreferences.setMockInitialValues({
@@ -113,6 +138,25 @@ void main() {
       final config = await ConfigService.getAdMobConfig();
       expect(config['clarityProjectId'], equals('my_clarity_project_id'));
       expect(apiCalled, isTrue); // 서버 재호출 정상 트리거됨
+    });
+
+    test('기기 시간이 캐시 저장 시각보다 과거면 서버 설정을 다시 확인한다', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      SharedPreferences.setMockInitialValues({
+        'remote_config_cache': jsonEncode(mockServerResponse),
+        'remote_config_cache_time':
+            now + const Duration(days: 3).inMilliseconds,
+      });
+      ConfigService.mockTimeMs = now;
+      var apiCalled = false;
+      ConfigService.mockClient = MockClient((request) async {
+        apiCalled = true;
+        return http.Response(jsonEncode(mockServerResponse), 200);
+      });
+
+      await ConfigService.getAdMobConfig();
+
+      expect(apiCalled, isTrue);
     });
 
     test('캐시에 firebase 블록이 없는 구버전 캐시의 경우 캐시를 무시하고 서버 재요청을 해야 함', () async {

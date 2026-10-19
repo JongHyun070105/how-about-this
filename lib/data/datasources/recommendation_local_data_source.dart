@@ -29,13 +29,13 @@ class RecommendationLocalDataSourceImpl
 
     if (encodedData == null || expiryTimeStr == null) return null;
 
-    final expiryTime = DateTime.parse(expiryTimeStr);
-    if (DateTime.now().isAfter(expiryTime)) {
-      await clearCache(category);
-      return null;
-    }
-
     try {
+      final expiryTime = DateTime.parse(expiryTimeStr);
+      if (DateTime.now().isAfter(expiryTime)) {
+        await clearCache(category);
+        return null;
+      }
+
       final decoded = jsonDecode(encodedData);
       if (decoded is Map<String, dynamic> && decoded['category'] == category) {
         final dataList = decoded['data'] as List;
@@ -45,7 +45,7 @@ class RecommendationLocalDataSourceImpl
       }
       return null;
     } catch (e) {
-      LoggerService.e('Error decoding cached data', e);
+      LoggerService.e('Error reading cached recommendations', e);
       await clearCache(category);
       return null;
     }

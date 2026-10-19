@@ -49,6 +49,39 @@ void main() {
       verifyZeroInteractions(mockRemoteDataSource);
     });
 
+    test('최근 먹은 음식이 캐시에 있으면 새 추천을 받아온다', () async {
+      const recentlyEaten = model.FoodRecommendation(
+        name: '비빔밥',
+        imageUrl: 'cached-url',
+      );
+      const refreshedRecommendation = model.FoodRecommendation(
+        name: '불고기',
+        imageUrl: 'fresh-url',
+      );
+      when(
+        mockLocalDataSource.getCachedRecommendations(category),
+      ).thenAnswer((_) async => [recentlyEaten]);
+      when(
+        mockRemoteDataSource.getFoodRecommendations(
+          category: category,
+          recentFoods: recentFoods,
+        ),
+      ).thenAnswer((_) async => [refreshedRecommendation]);
+
+      final result = await repository.getRecommendations(
+        category: category,
+        recentFoods: recentFoods,
+      );
+
+      expect(result.single.name, '불고기');
+      verify(
+        mockRemoteDataSource.getFoodRecommendations(
+          category: category,
+          recentFoods: recentFoods,
+        ),
+      ).called(1);
+    });
+
     test(
       'getRecommendations fetches from remote and caches when no cache available',
       () async {
