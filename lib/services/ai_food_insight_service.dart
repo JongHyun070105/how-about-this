@@ -41,6 +41,7 @@ class AiFoodInsightService {
   /// 마지막 AI 인사이트 캐시 (앱 내 메모리 캐시)
   String? _cachedInsight;
   DateTime? _cachedAt;
+  String? _cachedSummaryKey;
 
   /// AI 인사이트 가져오기
   ///
@@ -57,20 +58,26 @@ class AiFoodInsightService {
       );
     }
 
+    final summary = FoodInsightService.generateSummary(history);
+    final summaryKey = jsonEncode(summary);
+
     // 캐시 만료 로직 (알림 시간대 8, 12, 19시 기준 및 자정 기준)
-    if (!forceRefresh && _cachedInsight != null && _cachedAt != null) {
+    if (!forceRefresh &&
+        _cachedInsight != null &&
+        _cachedAt != null &&
+        _cachedSummaryKey == summaryKey) {
       if (!_isCacheExpiredByTimePoints(_cachedAt!)) {
         return AiInsightResult(message: _cachedInsight!, isAi: true);
       }
     }
 
     try {
-      final summary = FoodInsightService.generateSummary(history);
       final insight = await _fetchAiInsight(summary);
 
       if (insight != null) {
         _cachedInsight = insight;
         _cachedAt = DateTime.now();
+        _cachedSummaryKey = summaryKey;
         return AiInsightResult(message: insight, isAi: true);
       }
     } catch (e) {

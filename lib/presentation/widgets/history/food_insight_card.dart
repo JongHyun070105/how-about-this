@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:review_ai/services/ai_food_insight_service.dart';
 import 'package:review_ai/services/food_insight_service.dart';
@@ -30,7 +32,13 @@ class _FoodInsightCardState extends State<FoodInsightCard> {
   @override
   void didUpdateWidget(covariant FoodInsightCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.history.length != oldWidget.history.length) {
+    final newSummary = jsonEncode(
+      FoodInsightService.generateSummary(widget.history),
+    );
+    final oldSummary = jsonEncode(
+      FoodInsightService.generateSummary(oldWidget.history),
+    );
+    if (newSummary != oldSummary) {
       _loadAiInsight();
     }
   }
