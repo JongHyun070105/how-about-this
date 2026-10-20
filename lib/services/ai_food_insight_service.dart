@@ -59,7 +59,11 @@ class AiFoodInsightService {
     }
 
     final summary = FoodInsightService.generateSummary(history);
-    final summaryKey = jsonEncode(summary);
+    // The local fallback message is randomly selected, so it must not make
+    // otherwise identical review history look like a different cache input.
+    final cacheSummary = Map<String, dynamic>.from(summary)
+      ..remove('insightMessage');
+    final summaryKey = jsonEncode(cacheSummary);
 
     // 캐시 만료 로직 (알림 시간대 8, 12, 19시 기준 및 자정 기준)
     if (!forceRefresh &&
