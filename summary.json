@@ -2,14 +2,14 @@
   "repository": "JongHyun070105/how-about-this",
   "title": "how-about-this",
   "stars": 3,
-  "commits30d": 22,
+  "commits30d": 25,
   "mergedPullRequests30d": 0,
   "closedIssues30d": 0,
-  "reviews30d": 2,
+  "reviews30d": 3,
   "contributors": [
     {
       "login": "JongHyun070105",
-      "contributions": 392,
+      "contributions": 393,
       "recentCommits": 0,
       "pullRequests": 0,
       "reviews": 0
@@ -26,7 +26,7 @@
       "contributions": 0,
       "recentCommits": 0,
       "pullRequests": 0,
-      "reviews": 2
+      "reviews": 3
     },
     {
       "login": "dependabot[bot]",
@@ -39,36 +39,36 @@
   "languages": [
     {
       "name": "Dart",
-      "bytes": 804715,
-      "share": 0.9051291193742611
+      "bytes": 825110,
+      "share": 0.9072566457310745
     },
     {
       "name": "JavaScript",
       "bytes": 76291,
-      "share": 0.08581075989161599
+      "share": 0.08388641121725515
     },
     {
       "name": "Java",
       "bytes": 3428,
-      "share": 0.0038557534297421663
+      "share": 0.0037692862546401364
     },
     {
       "name": "Ruby",
       "bytes": 1853,
-      "share": 0.002084221442623172
+      "share": 0.002037481747330272
     }
   ],
   "latestRelease": {
     "tagName": "v1.15.0",
     "publishedAt": "2026-10-18T10:07:11Z"
   },
-  "lastCommitAt": "2026-10-18T10:06:58Z",
+  "lastCommitAt": "2026-10-19T14:25:47Z",
   "ci": {
     "workflow": "cicd.yml",
     "status": "completed",
     "conclusion": "success"
   },
-  "generatedAt": "2026-10-19T08:46:07.412Z",
+  "generatedAt": "2026-10-20T08:26:49.785Z",
   "configuration": {
     "themes": [
       "coral-day",
