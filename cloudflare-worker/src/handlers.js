@@ -263,7 +263,8 @@ export async function handleFoodInsight(request, env, ctx) {
     const { categoryFrequency, topFoods, totalReviews, weeklyCount, streak } = validateFoodInsightInput(body);
     
     const today = new Date().toISOString().split("T")[0];
-    const cacheUrl = new URL(`https://api.reviewai.internal/insight?hash=${user.deviceHash}&date=${today}`);
+    const summaryHash = await sha256Hash(JSON.stringify({ categoryFrequency, topFoods, totalReviews, weeklyCount, streak }));
+    const cacheUrl = new URL(`https://api.reviewai.internal/insight?hash=${user.deviceHash}&date=${today}&summary=${summaryHash}`);
     const cacheRequest = new Request(cacheUrl);
     const cache = caches.default;
     const cachedResponse = await cache.match(cacheRequest);

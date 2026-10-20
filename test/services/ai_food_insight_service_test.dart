@@ -147,6 +147,36 @@ void main() {
       expect(apiCallCount, 2);
     });
 
+    test('리뷰 요약이 바뀌면 이전 사용자 맞춤 인사이트를 재사용하지 않는다', () async {
+      int apiCallCount = 0;
+      final mockClient = MockClient((request) async {
+        apiCallCount++;
+        return http.Response(
+          json.encode({'insight': '새 식습관 인사이트 $apiCallCount', 'cached': false}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final service = AiFoodInsightService();
+      service.setClientForTesting(mockClient);
+
+      await service.getInsight([
+        _createEntry(foodName: '버섯전골', category: '한식'),
+      ], forceRefresh: true);
+      final changedHistoryResult = await service.getInsight([
+        _createEntry(foodName: '쌀국수', category: '아시아 음식'),
+        _createEntry(
+          foodName: '쌀국수',
+          category: '아시아 음식',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+      ]);
+
+      expect(apiCallCount, 2);
+      expect(changedHistoryResult.message, '새 식습관 인사이트 2');
+    });
+
     test('dispose 호출 후 다시 요청 시 클라이언트 재생성 및 안정성 검증', () async {
       int apiCallCount = 0;
       final mockClient = MockClient((request) async {
