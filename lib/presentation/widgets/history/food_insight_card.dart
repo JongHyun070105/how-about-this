@@ -32,15 +32,17 @@ class _FoodInsightCardState extends State<FoodInsightCard> {
   @override
   void didUpdateWidget(covariant FoodInsightCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final newSummary = jsonEncode(
-      FoodInsightService.generateSummary(widget.history),
-    );
-    final oldSummary = jsonEncode(
-      FoodInsightService.generateSummary(oldWidget.history),
-    );
+    final newSummary = _summaryKey(widget.history);
+    final oldSummary = _summaryKey(oldWidget.history);
     if (newSummary != oldSummary) {
       _loadAiInsight();
     }
+  }
+
+  String _summaryKey(List<ReviewHistoryEntry> history) {
+    final summary = FoodInsightService.generateSummary(history);
+    summary.remove('insightMessage');
+    return jsonEncode(summary);
   }
 
   Future<void> _loadAiInsight() async {

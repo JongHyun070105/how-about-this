@@ -59,8 +59,7 @@ class AiFoodInsightService {
     }
 
     final summary = FoodInsightService.generateSummary(history);
-    // The local fallback message is randomly selected, so it must not make
-    // otherwise identical review history look like a different cache input.
+    // The local fallback message is random and does not affect the API input.
     final cacheSummary = Map<String, dynamic>.from(summary)
       ..remove('insightMessage');
     final summaryKey = jsonEncode(cacheSummary);
