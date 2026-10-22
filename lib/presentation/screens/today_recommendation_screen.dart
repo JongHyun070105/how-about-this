@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:review_ai/core/utils/logger_service.dart';
 
 import 'package:review_ai/data/models/food_recommendation.dart';
 import 'package:review_ai/presentation/providers/app_providers.dart';
@@ -15,7 +16,6 @@ import 'package:review_ai/services/user_preference_service.dart';
 import 'package:review_ai/presentation/viewmodels/weather_viewmodel.dart';
 import 'package:review_ai/utils/responsive.dart';
 import 'package:review_ai/services/location_service.dart';
-import 'package:review_ai/services/notification_service.dart';
 
 class TodayRecommendationScreen extends ConsumerStatefulWidget {
   const TodayRecommendationScreen({super.key});
@@ -47,11 +47,10 @@ class _TodayRecommendationScreenState
   Future<void> _requestPermissionsIfNeeded() async {
     if (!mounted) return;
     try {
-      final locationService = LocationService();
-      final notificationService = NotificationService();
-      await locationService.requestLocationPermission();
-      await notificationService.requestPermissions();
-    } catch (_) {}
+      await LocationService().requestLocationPermission();
+    } catch (error, stackTrace) {
+      LoggerService.e('Location permission request failed', error, stackTrace);
+    }
   }
 
   @override
@@ -77,8 +76,6 @@ class _TodayRecommendationScreenState
     _messageRotationTimer?.cancel();
     _messageRotationTimer = null;
   }
-
-  // _loadBannerAd is removed.
 
   @override
   Widget build(BuildContext context) {
