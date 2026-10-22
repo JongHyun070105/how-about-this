@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.1](https://github.com/JongHyun070105/how-about-this/compare/v1.15.0...v1.15.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* defer notification permission and remove dead widgets ([11f1d09](https://github.com/JongHyun070105/how-about-this/commit/11f1d09890a381da67ff51feff3d0ce55aeda24d))
+* refresh food insights for changed history ([69c6a43](https://github.com/JongHyun070105/how-about-this/commit/69c6a43ee903f445c7726bb8fc710790cfd4bdf8))
+* refresh food insights when history changes ([943d522](https://github.com/JongHyun070105/how-about-this/commit/943d5226a975c489ea198246ad6eb54c370e9258))
+* refresh food insights when history changes ([6da683b](https://github.com/JongHyun070105/how-about-this/commit/6da683b288f1fd35c34f38a16819a6813942e113))
+* request notifications only when enabled ([d8cd815](https://github.com/JongHyun070105/how-about-this/commit/d8cd815ab2d06cd8e9048af4ac86b31534ce1145))
+* stabilize AI insight cache key ([0f8c514](https://github.com/JongHyun070105/how-about-this/commit/0f8c5145aef358bca9dbdb575fb8733674f0cfaf))
+
 ## [1.15.0](https://github.com/JongHyun070105/how-about-this/compare/v1.14.0...v1.15.0) (2026-10-17)
 
 
