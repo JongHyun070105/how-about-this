@@ -145,7 +145,7 @@ class UsageTrackingService {
       // 에러 발생 시 로컬 시간 사용 (폴백)
       final now = mockGetCurrentDate != null
           ? await mockGetCurrentDate!()
-          : DateTime.now();
+          : DateTime.now().toUtc().add(const Duration(hours: 9));
       final nowDateStr = now.toIso8601String().substring(0, 10);
 
       await _ensureCached();

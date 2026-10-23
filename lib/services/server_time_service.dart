@@ -134,7 +134,11 @@ class ServerTimeService {
   /// 현재 날짜 가져오기 (서버 시간 기준)
   static Future<DateTime> getCurrentDate() async {
     final serverTime = await getServerTime();
-    return DateTime(serverTime.year, serverTime.month, serverTime.day);
+    // 서버는 UTC를 반환하고 일일 사용량 제한은 한국 날짜를 기준으로 한다.
+    // 실패 시 로컬 시간으로 폴백하더라도 이를 UTC로 바꾼 뒤 같은 KST 날짜
+    // 계산을 적용해 서버 성공/실패 경로의 기준을 일치시킨다.
+    final koreaTime = serverTime.toUtc().add(const Duration(hours: 9));
+    return DateTime.utc(koreaTime.year, koreaTime.month, koreaTime.day);
   }
 
   /// 시스템 시간 조작 감지
