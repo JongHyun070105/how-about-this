@@ -103,6 +103,20 @@ void main() {
       );
     });
 
+    test('서버 시간 조회 실패 폴백도 한국 날짜 기준을 사용한다', () async {
+      ServerTimeService.setClockForTesting(
+        () => DateTime.utc(2026, 10, 23, 15, 30),
+      );
+      ServerTimeService.setClientForTesting(
+        MockClient((request) async => http.Response('Server Error', 500)),
+      );
+
+      expect(
+        await ServerTimeService.getCurrentDate(),
+        DateTime.utc(2026, 10, 24),
+      );
+    });
+
     test('시간 조회 실패 후 짧은 backoff 동안 중복 서버 요청을 생략한다', () async {
       var apiCallCount = 0;
       final mockClient = MockClient((request) async {

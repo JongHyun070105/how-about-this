@@ -7,11 +7,16 @@ import 'package:review_ai/services/remote_config_service.dart';
 class MockPersistentStorageService extends PersistentStorageService {
   int getCallCount = 0;
   int setCallCount = 0;
+  bool failNextGet = false;
   final Map<String, dynamic> store = {};
 
   @override
   Future<T?> getValue<T>(String fileName, String key) async {
     getCallCount++;
+    if (failNextGet) {
+      failNextGet = false;
+      throw StateError('Simulated storage read failure');
+    }
     return store['$fileName:$key'] as T?;
   }
 
@@ -50,8 +55,27 @@ void main() {
   });
 
   group('UsageTrackingService 캐싱 및 기능 검증', () {
+    test('예외 폴백도 KST 날짜를 사용한다', () async {
+      final koreaNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+      final expectedDate = DateTime.utc(
+        koreaNow.year,
+        koreaNow.month,
+        koreaNow.day,
+      ).toIso8601String().substring(0, 10);
+      mockStorage.failNextGet = true;
+
+      await trackingService.getReviewCount();
+
+      expect(
+        mockStorage.store['usage_data.json:last_reset_date'],
+        expectedDate,
+      );
+    });
+
     test('최초 사용량 조회 시 디스크 I/O가 발생하고 이후 캐시를 사용한다', () async {
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final today = DateTime.utc(2026, 10, 24);
+      UsageTrackingService.mockGetCurrentDate = () async => today;
+      final todayStr = today.toIso8601String().substring(0, 10);
       mockStorage.store['usage_data.json:review_count'] = 3;
       mockStorage.store['usage_data.json:total_recommendation_count'] = 5;
       mockStorage.store['usage_data.json:last_reset_date'] = todayStr;
@@ -68,7 +92,9 @@ void main() {
     });
 
     test('카운트 증가 시 캐시가 즉시 반영되며 추가적인 읽기 I/O는 0회다', () async {
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final today = DateTime.utc(2026, 10, 24);
+      UsageTrackingService.mockGetCurrentDate = () async => today;
+      final todayStr = today.toIso8601String().substring(0, 10);
       mockStorage.store['usage_data.json:review_count'] = 2;
       mockStorage.store['usage_data.json:total_recommendation_count'] = 1;
       mockStorage.store['usage_data.json:last_reset_date'] = todayStr;
