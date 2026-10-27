@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.15.1](https://github.com/JongHyun070105/how-about-this/compare/v1.15.0...v1.15.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* defer notification permission and remove dead widgets ([11f1d09](https://github.com/JongHyun070105/how-about-this/commit/11f1d09890a381da67ff51feff3d0ce55aeda24d))
+* encode JWT payloads as UTF-8 ([3ad482d](https://github.com/JongHyun070105/how-about-this/commit/3ad482d24c39265c7e971c87d4d0c2fbdd33d730))
+* keep usage date fallback on Korea time ([912aa9a](https://github.com/JongHyun070105/how-about-this/commit/912aa9ab9a7314b883ee285d3b41e3ff89ba7cb7))
+* refresh food insights for changed history ([69c6a43](https://github.com/JongHyun070105/how-about-this/commit/69c6a43ee903f445c7726bb8fc710790cfd4bdf8))
+* refresh food insights when history changes ([943d522](https://github.com/JongHyun070105/how-about-this/commit/943d5226a975c489ea198246ad6eb54c370e9258))
+* refresh food insights when history changes ([6da683b](https://github.com/JongHyun070105/how-about-this/commit/6da683b288f1fd35c34f38a16819a6813942e113))
+* request notifications only when enabled ([d8cd815](https://github.com/JongHyun070105/how-about-this/commit/d8cd815ab2d06cd8e9048af4ac86b31534ce1145))
+* stabilize AI insight cache key ([0f8c514](https://github.com/JongHyun070105/how-about-this/commit/0f8c5145aef358bca9dbdb575fb8733674f0cfaf))
+* update worker tooling and production deploy target ([765945d](https://github.com/JongHyun070105/how-about-this/commit/765945dde6099621c62d71cdbac84bc2a90aad46))
+* use Korea date for daily usage reset ([e2cd513](https://github.com/JongHyun070105/how-about-this/commit/e2cd513ccb95f39a5324c8c7f6f22f2df4b446bd))
+
 ## [1.15.0](https://github.com/JongHyun070105/how-about-this/compare/v1.14.0...v1.15.0) (2026-10-17)
 
 
