@@ -34,8 +34,8 @@ void main() {
         apiCallCount++;
         return http.Response(
           json.encode({
-            'serverTime': '2026-06-17T22:30:00.000',
-            'timestamp': 1781735400000,
+            'serverTime': '2026-06-17T12:30:00.000Z',
+            'timestamp': 1781699400000,
           }),
           200,
         );
@@ -45,7 +45,7 @@ void main() {
 
       // 첫 호출 - API 호출 발생
       final time1 = await ServerTimeService.getServerTime();
-      expect(time1, DateTime.parse('2026-06-17T22:30:00.000'));
+      expect(time1, DateTime.parse('2026-06-17T12:30:00.000Z'));
       expect(apiCallCount, 1);
 
       // 두 번째 호출 - 캐시 반환 (API 호출 없음)
@@ -60,8 +60,8 @@ void main() {
         apiCallCount++;
         return http.Response(
           json.encode({
-            'serverTime': '2026-06-17T22:30:00.000',
-            'timestamp': 1781735400000,
+            'serverTime': '2026-06-17T12:30:00.000Z',
+            'timestamp': 1781699400000,
           }),
           200,
         );
@@ -100,6 +100,20 @@ void main() {
       expect(
         time.millisecondsSinceEpoch,
         lessThanOrEqualTo(after.millisecondsSinceEpoch),
+      );
+    });
+
+    test('서버 시간 조회 실패 폴백도 한국 날짜 기준을 사용한다', () async {
+      ServerTimeService.setClockForTesting(
+        () => DateTime.utc(2026, 10, 23, 15, 30),
+      );
+      ServerTimeService.setClientForTesting(
+        MockClient((request) async => http.Response('Server Error', 500)),
+      );
+
+      expect(
+        await ServerTimeService.getCurrentDate(),
+        DateTime.utc(2026, 10, 24),
       );
     });
 
@@ -260,8 +274,8 @@ void main() {
       final mockClient = MockClient((request) async {
         return http.Response(
           json.encode({
-            'serverTime': '2026-06-17T22:30:00.000',
-            'timestamp': 1781735400000,
+            'serverTime': '2026-06-17T12:30:00.000Z',
+            'timestamp': 1781699400000,
           }),
           200,
         );
@@ -275,6 +289,31 @@ void main() {
       expect(date.day, 17);
       expect(date.hour, 0);
       expect(date.minute, 0);
+    });
+
+    test('UTC 서버 시각을 한국 날짜로 변환해 자정 경계에서 날짜를 맞춘다', () async {
+      ServerTimeService.setClientForTesting(
+        MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'serverTime': '2026-10-23T15:30:00.000Z',
+              'timestamp': DateTime.utc(
+                2026,
+                10,
+                23,
+                15,
+                30,
+              ).millisecondsSinceEpoch,
+            }),
+            200,
+          );
+        }),
+      );
+
+      expect(
+        await ServerTimeService.getCurrentDate(),
+        DateTime.utc(2026, 10, 24),
+      );
     });
   });
 }

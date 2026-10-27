@@ -6,12 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --env production",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --env production",
     "test": "node --test",
     "test:runtime": "node scripts/runtime-check.js",
     "benchmark": "node benchmark/hot-paths.js"
   },
   "devDependencies": {
-    "wrangler": "4.151.1"
+    "wrangler": "4.153.0"
   }
 }
