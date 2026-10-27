@@ -41,6 +41,16 @@ test("JWT concurrent signing shares key import and isolates rotated secrets", as
   assert.equal((await verifyJWT(rotated, `${SECRET}-rotated`)).type, "access");
 });
 
+test("JWT payloads preserve Unicode through UTF-8 base64url encoding", async () => {
+  const deviceId = "设备🔑";
+  const token = await generateJWT({ type: "access", deviceId }, SECRET, 60);
+
+  assert.equal(
+    (await verifyJWT(token, SECRET, { expectedType: "access" })).deviceId,
+    deviceId,
+  );
+});
+
 test("failed key import is retried rather than cached permanently", async (t) => {
   const originalImport = crypto.subtle.importKey.bind(crypto.subtle);
   let imports = 0;
