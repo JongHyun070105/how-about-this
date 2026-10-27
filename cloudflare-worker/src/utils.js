@@ -116,14 +116,20 @@ async function sign(message, secret) {
 }
 
 function base64urlEncode(data) {
-  let str = typeof data === "string" ? data : String.fromCharCode(...data);
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  const bytes = typeof data === "string" ? encoder.encode(data) : data;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function base64urlDecode(str) {
   str = str.replace(/-/g, "+").replace(/_/g, "/");
   while (str.length % 4) str += "=";
-  return atob(str);
+  const binary = atob(str);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 export async function sha256Hash(text) {
