@@ -77,38 +77,65 @@ class AppUpdateService {
     return null;
   }
 
-  /// 두 버전 문자열을 비교합니다 (예: "1.0.2-beta" > "1.0.1").
-  /// version1이 version2보다 크면 true를 반환합니다.
+  /// SemVer 우선순위에 따라 두 버전을 비교합니다.
+  /// version1이 version2보다 높으면 true를 반환합니다.
   bool isVersionGreater(String version1, String version2) {
-    int safeParsePart(String part) {
-      final cleanDigits = part.replaceAll(RegExp(r'[^0-9]'), '');
-      return int.tryParse(cleanDigits) ?? 0;
+    final versionPattern = RegExp(
+      r'^[vV]?(\d+(?:\.\d+)*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$',
+    );
+    final first = versionPattern.firstMatch(version1.trim());
+    final second = versionPattern.firstMatch(version2.trim());
+    if (first == null || second == null) return false;
+
+    final firstCore = first
+        .group(1)!
+        .split('.')
+        .map((part) => BigInt.parse(part))
+        .toList();
+    final secondCore = second
+        .group(1)!
+        .split('.')
+        .map((part) => BigInt.parse(part))
+        .toList();
+
+    final coreLength = firstCore.length > secondCore.length
+        ? firstCore.length
+        : secondCore.length;
+    for (var i = 0; i < coreLength; i++) {
+      final firstPart = i < firstCore.length ? firstCore[i] : BigInt.zero;
+      final secondPart = i < secondCore.length ? secondCore[i] : BigInt.zero;
+      if (firstPart != secondPart) return firstPart > secondPart;
     }
 
-    final v1 = version1
-        .replaceAll('+', '.')
-        .replaceAll('-', '.')
-        .split('.')
-        .map(safeParsePart)
-        .toList();
-    final v2 = version2
-        .replaceAll('+', '.')
-        .replaceAll('-', '.')
-        .split('.')
-        .map(safeParsePart)
-        .toList();
+    final firstPreRelease = first.group(2)?.split('.');
+    final secondPreRelease = second.group(2)?.split('.');
+    if (firstPreRelease == null) return secondPreRelease != null;
+    if (secondPreRelease == null) return false;
 
-    final len = v1.length > v2.length ? v1.length : v2.length;
+    final sharedLength = firstPreRelease.length < secondPreRelease.length
+        ? firstPreRelease.length
+        : secondPreRelease.length;
+    final numericIdentifier = RegExp(r'^\d+$');
+    for (var i = 0; i < sharedLength; i++) {
+      final firstIdentifier = firstPreRelease[i];
+      final secondIdentifier = secondPreRelease[i];
+      final firstIsNumeric = numericIdentifier.hasMatch(firstIdentifier);
+      final secondIsNumeric = numericIdentifier.hasMatch(secondIdentifier);
 
-    for (int i = 0; i < len; i++) {
-      final part1 = i < v1.length ? v1[i] : 0;
-      final part2 = i < v2.length ? v2[i] : 0;
-
-      if (part1 > part2) return true;
-      if (part1 < part2) return false;
+      if (firstIsNumeric && secondIsNumeric) {
+        final comparison = BigInt.parse(
+          firstIdentifier,
+        ).compareTo(BigInt.parse(secondIdentifier));
+        if (comparison != 0) return comparison > 0;
+      } else if (firstIsNumeric != secondIsNumeric) {
+        return !firstIsNumeric;
+      } else {
+        final comparison = firstIdentifier.compareTo(secondIdentifier);
+        if (comparison != 0) return comparison > 0;
+      }
     }
 
-    return false; // 버전이 동일함
+    return firstPreRelease.length > secondPreRelease.length;
   }
 
   /// Android 플랫폼에서 인앱 업데이트를 확인하고, 가능하다면 다운로드를 시작(Flexible)합니다.
