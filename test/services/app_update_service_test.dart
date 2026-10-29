@@ -53,11 +53,22 @@ void main() {
       expect(service.isVersionGreater('1.0.1', '1.0.2'), isFalse);
     });
 
-    test('복합 프리릴리즈 태그 버전 파싱 및 안전 비교 성공', () {
-      // 복합 문자열 파싱 예외 발생 여부와 대소 비교 정확성 확인
+    test('정식 버전은 같은 버전의 프리릴리스보다 우선한다', () {
+      expect(service.isVersionGreater('1.0.2', '1.0.2-rc.1'), isTrue);
+      expect(service.isVersionGreater('1.0.2-rc.1', '1.0.2'), isFalse);
+    });
+
+    test('프리릴리스 식별자를 숫자 순서와 이름 순서로 비교한다', () {
+      expect(service.isVersionGreater('1.0.2-beta', '1.0.2-alpha'), isTrue);
+      expect(service.isVersionGreater('1.0.2-rc.10', '1.0.2-rc.2'), isTrue);
+    });
+
+    test('빌드 메타데이터는 버전 우선순위를 바꾸지 않는다', () {
+      expect(service.isVersionGreater('1.0.2+1', '1.0.2'), isFalse);
+    });
+
+    test('프리릴리스 태그가 있어도 상위 패치 버전은 더 높다', () {
       expect(service.isVersionGreater('1.0.2-beta', '1.0.1'), isTrue);
-      expect(service.isVersionGreater('1.0.2-alpha', '1.0.2'), isFalse);
-      expect(service.isVersionGreater('1.0.2+1', '1.0.2'), isTrue);
       expect(service.isVersionGreater('2.0.1-rc3', '2.0.0'), isTrue);
     });
 
@@ -95,6 +106,38 @@ void main() {
 
       final service = AppUpdateService(client: mockClient);
       AppUpdateService.setMockCurrentVersion('1.0.0');
+
+      final result = await service.isUpdateAvailable();
+      expect(result, isNull);
+    });
+
+    test('프리릴리스 앱은 정식 버전 업데이트를 안내한다', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          json.encode({'latest_version': '1.0.2'}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final service = AppUpdateService(client: mockClient);
+      AppUpdateService.setMockCurrentVersion('1.0.2-rc.1');
+
+      final result = await service.isUpdateAvailable();
+      expect(result, '1.0.2');
+    });
+
+    test('정식 앱은 프리릴리스 manifest 버전을 업데이트로 안내하지 않는다', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          json.encode({'latest_version': '1.0.2-rc.1'}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final service = AppUpdateService(client: mockClient);
+      AppUpdateService.setMockCurrentVersion('1.0.2');
 
       final result = await service.isUpdateAvailable();
       expect(result, isNull);
