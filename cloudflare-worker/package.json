@@ -12,6 +12,6 @@
     "benchmark": "node benchmark/hot-paths.js"
   },
   "devDependencies": {
-    "wrangler": "4.153.0"
+    "wrangler": "4.156.0"
   }
 }
