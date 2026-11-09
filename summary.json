@@ -5,7 +5,7 @@
   "commits30d": 29,
   "mergedPullRequests30d": 0,
   "closedIssues30d": 0,
-  "reviews30d": 6,
+  "reviews30d": 3,
   "contributors": [
     {
       "login": "JongHyun070105",
@@ -26,7 +26,7 @@
       "contributions": 0,
       "recentCommits": 0,
       "pullRequests": 0,
-      "reviews": 5
+      "reviews": 3
     },
     {
       "login": "dependabot[bot]",
@@ -34,13 +34,6 @@
       "recentCommits": 0,
       "pullRequests": 0,
       "reviews": 0
-    },
-    {
-      "login": "chatgpt-codex-connector[bot]",
-      "contributions": 0,
-      "recentCommits": 0,
-      "pullRequests": 0,
-      "reviews": 1
     }
   ],
   "languages": [
@@ -75,7 +68,7 @@
     "status": "completed",
     "conclusion": "success"
   },
-  "generatedAt": "2026-11-08T10:13:03.126Z",
+  "generatedAt": "2026-11-09T11:23:58.187Z",
   "configuration": {
     "themes": [
       "coral-day",
