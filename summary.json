@@ -2,7 +2,7 @@
   "repository": "JongHyun070105/how-about-this",
   "title": "how-about-this",
   "stars": 3,
-  "commits30d": 29,
+  "commits30d": 27,
   "mergedPullRequests30d": 0,
   "closedIssues30d": 0,
   "reviews30d": 3,
@@ -68,7 +68,7 @@
     "status": "completed",
     "conclusion": "success"
   },
-  "generatedAt": "2026-11-10T11:03:48.061Z",
+  "generatedAt": "2026-11-11T10:49:31.047Z",
   "configuration": {
     "themes": [
       "coral-day",
