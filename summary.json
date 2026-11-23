@@ -5,7 +5,7 @@
   "commits30d": 5,
   "mergedPullRequests30d": 0,
   "closedIssues30d": 0,
-  "reviews30d": 2,
+  "reviews30d": 0,
   "contributors": [
     {
       "login": "JongHyun070105",
@@ -20,13 +20,6 @@
       "recentCommits": 0,
       "pullRequests": 0,
       "reviews": 0
-    },
-    {
-      "login": "Copilot",
-      "contributions": 0,
-      "recentCommits": 0,
-      "pullRequests": 0,
-      "reviews": 2
     },
     {
       "login": "dependabot[bot]",
@@ -68,7 +61,7 @@
     "status": "completed",
     "conclusion": "success"
   },
-  "generatedAt": "2026-11-22T11:13:41.730Z",
+  "generatedAt": "2026-11-23T12:24:00.925Z",
   "configuration": {
     "themes": [
       "coral-day",
